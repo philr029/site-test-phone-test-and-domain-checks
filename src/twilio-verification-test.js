@@ -3,13 +3,12 @@ import path from 'node:path';
 import dotenv from 'dotenv';
 import twilio from 'twilio';
 import { chromium } from 'playwright';
+import { sendNotification } from './utils/notifier.js';
 
 dotenv.config();
 
 const repoRoot = process.cwd();
 const reportPath = path.join(repoRoot, 'reports', 'twilio-report.json');
-
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const writeReport = async (result) => {
   await fs.mkdir(path.dirname(reportPath), { recursive: true });
@@ -29,6 +28,53 @@ if (missing.length > 0) {
   console.log(JSON.stringify(skipped));
   process.exit(0);
 }
+
+const sleepWithSignal = (ms, signal) =>
+  new Promise((resolve, reject) => {
+    const timer = setTimeout(resolve, ms);
+
+    const abortHandler = () => {
+      clearTimeout(timer);
+      reject(new Error('Polling aborted'));
+    };
+
+    signal.addEventListener('abort', abortHandler, { once: true });
+
+    setTimeout(() => {
+      signal.removeEventListener('abort', abortHandler);
+    }, ms + 1);
+  });
+
+const pollForOtp = async ({ client, to, regex, expectedFrom, maxTimeoutMs = 60000 }) => {
+  const controller = new AbortController();
+  const startedAt = Date.now();
+  let delayMs = 1500;
+
+  try {
+    while (Date.now() - startedAt <= maxTimeoutMs) {
+      const messages = await client.messages.list({ to, limit: 20 });
+      const candidate = messages.find((message) => {
+        if (expectedFrom && message.from !== expectedFrom) return false;
+        return regex.test(message.body || '');
+      });
+
+      if (candidate) {
+        const match = (candidate.body || '').match(regex);
+        const token = match?.[1] || match?.[0];
+        if (token) {
+          return { token, sourceMessage: candidate, elapsedMs: Date.now() - startedAt };
+        }
+      }
+
+      await sleepWithSignal(delayMs, controller.signal);
+      delayMs = Math.min(delayMs * 2, 10000);
+    }
+
+    return null;
+  } finally {
+    controller.abort();
+  }
+};
 
 const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
 const mode = (process.env.TWILIO_TEST_MODE || 'otp').toLowerCase();
@@ -70,35 +116,19 @@ const testOtpReceiveAndPlaywrightFlow = async () => {
   const regex = new RegExp(process.env.TWILIO_OTP_REGEX || '\\b(\\d{4,8})\\b');
   const expectedFrom = process.env.TWILIO_EXPECTED_FROM;
 
-  let code;
-  let sourceMessage;
+  const otp = await pollForOtp({
+    client,
+    to: process.env.TWILIO_TO_NUMBER,
+    regex,
+    expectedFrom,
+    maxTimeoutMs: Number(process.env.TWILIO_OTP_TIMEOUT_MS || 60000)
+  });
 
-  for (let attempt = 0; attempt < 6; attempt += 1) {
-    const messages = await client.messages.list({
-      to: process.env.TWILIO_TO_NUMBER,
-      limit: 20
-    });
-
-    const candidate = messages.find((m) => {
-      if (expectedFrom && m.from !== expectedFrom) return false;
-      return regex.test(m.body || '');
-    });
-
-    if (candidate) {
-      sourceMessage = candidate;
-      const match = (candidate.body || '').match(regex);
-      code = match?.[1] || match?.[0];
-      break;
-    }
-
-    await sleep(5000);
-  }
-
-  if (!code) {
+  if (!otp) {
     return {
       status: 'failed',
       mode: 'otp',
-      reason: 'No OTP message found in Twilio inbox'
+      reason: 'No OTP message found before timeout'
     };
   }
 
@@ -114,7 +144,7 @@ const testOtpReceiveAndPlaywrightFlow = async () => {
 
     try {
       await page.goto(otpPageUrl, { waitUntil: 'domcontentloaded', timeout: 45000 });
-      await page.fill(otpFieldSelector, code);
+      await page.fill(otpFieldSelector, otp.token);
       if (otpSubmitSelector) {
         await page.click(otpSubmitSelector);
       }
@@ -130,8 +160,9 @@ const testOtpReceiveAndPlaywrightFlow = async () => {
   return {
     status: playwrightStatus.startsWith('failed') ? 'failed' : 'passed',
     mode: 'otp',
-    otpCode: code,
-    messageSid: sourceMessage.sid,
+    otpCode: otp.token,
+    messageSid: otp.sourceMessage.sid,
+    pollingElapsedMs: otp.elapsedMs,
     playwrightStatus
   };
 };
@@ -149,6 +180,14 @@ const run = async () => {
   await writeReport(payload);
 
   if (payload.status === 'failed') {
+    await sendNotification({
+      title: 'Twilio Verification Failure',
+      environment: process.env.TEST_ENVIRONMENT || 'unknown',
+      targetName: process.env.TWILIO_TO_NUMBER || 'twilio',
+      details: payload.reason || payload.playwrightStatus || 'Twilio verification failed',
+      timestamp: payload.timestamp
+    }).catch(() => {});
+
     console.error(JSON.stringify(payload));
     process.exit(1);
   }

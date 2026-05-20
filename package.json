@@ -4,7 +4,7 @@
   "description": "Automated web form/pop-up testing, Twilio verification checks, and domain health monitoring.",
   "type": "module",
   "scripts": {
-    "test:form-popup": "node src/form-popup-test.js",
+    "test:form-popup": "playwright test tests/form.spec.js",
     "test:twilio": "node src/twilio-verification-test.js",
     "test:domain": "node src/domain-health-check.js",
     "test:e2e": "node src/run-all.js"

@@ -1,14 +1,14 @@
 import { spawn } from 'node:child_process';
 
 const commands = [
-  ['node', ['src/form-popup-test.js']],
-  ['node', ['src/twilio-verification-test.js']],
-  ['node', ['src/domain-health-check.js']]
+  ['npm', ['run', 'test:form-popup']],
+  ['npm', ['run', 'test:twilio']],
+  ['npm', ['run', 'test:domain']]
 ];
 
 const runCommand = ([cmd, args]) =>
   new Promise((resolve) => {
-    const child = spawn(cmd, args, { stdio: 'inherit' });
+    const child = spawn(cmd, args, { stdio: 'inherit', shell: true });
     child.on('close', (code) => resolve(code ?? 1));
   });
 
