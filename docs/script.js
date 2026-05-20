@@ -92,25 +92,29 @@
   }
 
   function initMockData() {
-    const lastRun = document.getElementById('stat-last-run');
-    if (lastRun) {
-      const runDate = new Date();
-      runDate.setHours(runDate.getHours() - 2);
-      runDate.setMinutes(14);
-      lastRun.textContent = runDate.toLocaleTimeString(undefined, {
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-      const meta = lastRun.closest('.status-card');
-      if (meta) {
-        const metaEl = meta.querySelector('.status-meta');
-        if (metaEl) metaEl.textContent = formatRelativeTime(runDate);
-      }
-    }
-
     const demoTime = document.getElementById('demo-updated');
     if (demoTime) {
-      demoTime.textContent = 'Updated ' + formatRelativeTime(new Date());
+      demoTime.textContent = 'Demo · ' + formatRelativeTime(new Date());
+    }
+  }
+
+  function initHeaderScroll() {
+    const header = document.querySelector('.site-header');
+    if (!header) return;
+
+    function onScroll() {
+      header.classList.toggle('scrolled', window.scrollY > 8);
+    }
+
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+  }
+
+  function initAccordionDeepLinks() {
+    if (!window.location.hash) return;
+    const target = document.querySelector(window.location.hash);
+    if (target && target.classList.contains('accordion-item')) {
+      target.open = true;
     }
   }
 
@@ -135,5 +139,7 @@
     initScrollReveal();
     initMockData();
     initSmoothAnchors();
+    initHeaderScroll();
+    initAccordionDeepLinks();
   });
 })();

@@ -3,8 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>QA Automation Dashboard — Site, Phone &amp; Domain Checks</title>
-  <meta name="description" content="Internal QA automation toolkit: Playwright form tests, Twilio phone checks, MXToolbox domain health, reports, screenshots, logs and alerts." />
+  <title>Marketing &amp; IT Automation Dashboard</title>
+  <meta name="description" content="Automated phone, website, popup and domain checks for daily lead-quality monitoring. Built for Marketing and IT teams." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
   <script src="script.js" defer></script>
 </head>
@@ -12,20 +15,22 @@
   <header class="site-header">
     <div class="container nav-inner">
       <a class="brand" href="#top">
-        <span class="brand-logo" aria-hidden="true">⚡</span>
-        <span>QA Automation Hub</span>
+        <span class="brand-logo" aria-hidden="true">◆</span>
+        <span class="brand-text">
+          <span class="brand-title">M&amp;IT Automation</span>
+          <span class="brand-sub">Lead Quality Checks</span>
+        </span>
       </a>
       <nav class="nav-links" aria-label="Primary">
-        <a href="#modules">Modules</a>
+        <a href="#dashboard">Dashboard</a>
+        <a href="#preview">Status</a>
         <a href="#workflow">Workflow</a>
-        <a href="#demo">Dashboard</a>
-        <a href="#value">Business Value</a>
-        <a href="#docs">Documentation</a>
-        <a href="#roadmap">Roadmap</a>
+        <a href="#value">Value</a>
+        <a href="#docs">Docs</a>
       </nav>
       <div class="nav-actions">
         <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">🌙</button>
-        <a class="btn btn-primary nav-cta" href="https://github.com/philr029/site-test-phone-test-and-domain-checks" target="_blank" rel="noopener">GitHub Repo</a>
+        <a class="btn btn-primary nav-cta" href="https://github.com/philr029/site-test-phone-test-and-domain-checks" target="_blank" rel="noopener">GitHub</a>
         <button type="button" class="mobile-menu-btn" id="mobile-menu-btn" aria-expanded="false" aria-label="Open menu">☰</button>
       </div>
     </div>
@@ -36,341 +41,341 @@
     <section class="hero">
       <div class="container">
         <div class="hero-grid">
-          <div>
-            <div class="hero-badge">Internal automation platform</div>
-            <h1>Automate lead forms, phone lines &amp; domain health — daily</h1>
-            <p class="hero-lead">
-              One config file drives Playwright site tests, Twilio outbound phone checks,
-              MXToolbox domain monitoring, and manager-ready HTML reports. Built for marketing
-              and IT teams who need reliable checks without manual repetition.
+          <div class="hero-content">
+            <div class="hero-badge">Marketing &amp; IT · Daily automation</div>
+            <h1>Marketing &amp; IT Automation Dashboard</h1>
+            <p class="hero-subtitle">
+              Automated phone, website, popup and domain checks for daily lead-quality monitoring.
+            </p>
+            <p class="hero-value">
+              Reduces manual daily checks by automating website forms, phone tests, popups, banners and domain health monitoring.
             </p>
             <div class="hero-cta">
-              <a class="btn btn-primary" href="#setup">Run Tests</a>
-              <a class="btn btn-secondary" href="#reports-doc">View Reports</a>
-              <a class="btn btn-secondary" href="#setup">Configure Targets</a>
-              <a class="btn btn-ghost" href="#setup">Read Setup Guide</a>
+              <a class="btn btn-primary" href="#reports-doc">View Reports</a>
+              <a class="btn btn-secondary" href="#setup">Run Local Tests</a>
+              <a class="btn btn-secondary" href="#setup">Setup Guide</a>
             </div>
             <div class="hero-tags">
               <span class="tag">Playwright</span>
               <span class="tag">Twilio</span>
               <span class="tag">MXToolbox</span>
               <span class="tag">GitHub Actions</span>
-              <span class="tag">JSON + HTML reports</span>
             </div>
           </div>
-          <div class="hero-visual">
+          <div class="hero-visual" aria-hidden="true">
             <div class="hero-card">
               <div class="hero-card-header">
-                <span class="hero-card-title">Run summary (demo)</span>
-                <span class="live-dot">Monitoring ready</span>
+                <span class="hero-card-title">Automation overview</span>
+                <span class="live-dot">Ready to run</span>
               </div>
               <div class="mini-stats">
                 <div class="mini-stat">
-                  <div class="mini-stat-value" style="color: var(--success)">12/14</div>
-                  <div class="mini-stat-label">Checks passed</div>
+                  <div class="mini-stat-value" style="color: var(--success)">6</div>
+                  <div class="mini-stat-label">Check modules</div>
                 </div>
                 <div class="mini-stat">
-                  <div class="mini-stat-value" style="color: var(--warning)">2</div>
-                  <div class="mini-stat-label">Warnings</div>
+                  <div class="mini-stat-value" style="color: var(--accent)">1</div>
+                  <div class="mini-stat-label">Config file</div>
                 </div>
                 <div class="mini-stat">
-                  <div class="mini-stat-value">6</div>
-                  <div class="mini-stat-label">Targets configured</div>
+                  <div class="mini-stat-value">JSON</div>
+                  <div class="mini-stat-label">+ HTML reports</div>
                 </div>
                 <div class="mini-stat">
-                  <div class="mini-stat-value">4m 32s</div>
-                  <div class="mini-stat-label">Last run duration</div>
+                  <div class="mini-stat-value">CI</div>
+                  <div class="mini-stat-label">Actions ready</div>
                 </div>
               </div>
             </div>
           </div>
         </div>
+      </div>
+    </section>
 
-        <!-- Status cards -->
-        <div class="status-row" aria-label="Live status overview">
-          <article class="status-card">
-            <div class="status-icon green" aria-hidden="true">✓</div>
-            <div class="status-label">Forms Passing</div>
-            <div class="status-value">11/12</div>
-            <div class="status-meta">Safe submit guard active</div>
-            <span class="status-pill ok">Healthy</span>
+    <!-- Dashboard module cards -->
+    <section class="section section-tight" id="dashboard">
+      <div class="container reveal">
+        <div class="section-header section-header-left">
+          <div class="section-eyebrow">Automation modules</div>
+          <h2>Your daily check toolkit</h2>
+          <p>Six integrated modules share one target config and produce unified reports for local review or scheduled CI runs.</p>
+        </div>
+        <div class="dashboard-grid">
+          <article class="dash-card">
+            <div class="dash-card-icon" aria-hidden="true">📝</div>
+            <h3>Website Forms</h3>
+            <p>Playwright validates forms load, accept test data, and show success — with safe submit guard.</p>
+            <span class="dash-badge ready">Ready</span>
           </article>
-          <article class="status-card">
-            <div class="status-icon blue" aria-hidden="true">📞</div>
-            <div class="status-label">Phone Tests Ready</div>
-            <div class="status-value">Twilio</div>
-            <div class="status-meta">Outbound line checks</div>
-            <span class="status-pill info">Configured</span>
+          <article class="dash-card">
+            <div class="dash-card-icon" aria-hidden="true">🪟</div>
+            <h3>Popup Checks</h3>
+            <p>Cookie banners, newsletter blocks, CTAs and live chat widgets verified by selector.</p>
+            <span class="dash-badge automated">Automated</span>
           </article>
-          <article class="status-card">
-            <div class="status-icon purple" aria-hidden="true">🌐</div>
-            <div class="status-label">Domain Health</div>
-            <div class="status-value">MX OK</div>
-            <div class="status-meta">SPF · DMARC · blacklist</div>
-            <span class="status-pill ok">Clear</span>
+          <article class="dash-card">
+            <div class="dash-card-icon" aria-hidden="true">📞</div>
+            <h3>Phone Tests</h3>
+            <p>Twilio outbound calls with honest statuses — answered, busy, no answer, or skipped.</p>
+            <span class="dash-badge ready">Ready</span>
           </article>
-          <article class="status-card">
-            <div class="status-icon orange" aria-hidden="true">⏱</div>
-            <div class="status-label">Last Run</div>
-            <div class="status-value" id="stat-last-run">06:14</div>
-            <div class="status-meta">Today · scheduled ready</div>
-            <span class="status-pill warn">2 warnings</span>
+          <article class="dash-card">
+            <div class="dash-card-icon" aria-hidden="true">🛡</div>
+            <h3>Domain Health</h3>
+            <p>MX, SPF, DMARC and blacklist checks with DNS fallback when API keys are absent.</p>
+            <span class="dash-badge monitoring">Monitoring</span>
           </article>
-          <article class="status-card">
-            <div class="status-icon red" aria-hidden="true">🔔</div>
-            <div class="status-label">Alerts</div>
-            <div class="status-value">0</div>
-            <div class="status-meta">Webhook optional</div>
-            <span class="status-pill ok">All clear</span>
+          <article class="dash-card">
+            <div class="dash-card-icon" aria-hidden="true">🔍</div>
+            <h3>MXToolbox</h3>
+            <p>API reputation lookups when configured; DNS fallback ensures useful signal either way.</p>
+            <span class="dash-badge api">API Optional</span>
+          </article>
+          <article class="dash-card">
+            <div class="dash-card-icon" aria-hidden="true">📊</div>
+            <h3>Reports</h3>
+            <p>JSON for dashboards and CI; HTML summaries for managers with failures and next actions.</p>
+            <span class="dash-badge report">Local Report</span>
           </article>
         </div>
       </div>
     </section>
 
-    <!-- Modules -->
-    <section class="section" id="modules">
+    <!-- Demo status preview -->
+    <section class="section section-alt" id="preview">
       <div class="container reveal">
-        <div class="section-header">
-          <div class="section-eyebrow">Automation modules</div>
-          <h2>Everything your team checks manually — automated</h2>
-          <p>Six integrated modules share one target config and produce unified reports for local review or CI artifacts.</p>
+        <div class="preview-header">
+          <div>
+            <div class="section-eyebrow">Demo dashboard preview</div>
+            <h2>Status overview</h2>
+            <p class="preview-disclaimer">
+              <span class="preview-pill">Sample data</span>
+              Illustrative metrics only — not live production data. Real runs write to <code>reports/run-report.html</code>.
+            </p>
+          </div>
         </div>
-        <div class="modules-grid">
-          <article class="module-card">
-            <div class="module-icon" aria-hidden="true">🌐</div>
-            <h3>Site Tests</h3>
-            <p>Playwright opens each target URL, validates forms are visible, fills test data, and only submits when <code>safeToSubmit: true</code>. Success selectors, URL tokens, and confirmation text are verified.</p>
-            <span class="module-status ready">Ready</span>
-          </article>
-          <article class="module-card">
-            <div class="module-icon" aria-hidden="true">📞</div>
-            <h3>Phone Tests</h3>
-            <p>Twilio outbound calls to company numbers from <code>config/targets.json</code>. Honest statuses: call started, answered, busy, no answer, failed, or skipped when keys are missing.</p>
-            <span class="module-status ready">Ready</span>
-          </article>
-          <article class="module-card">
-            <div class="module-icon" aria-hidden="true">🛡</div>
-            <h3>Domain Checks</h3>
-            <p>MXToolbox API for MX, SPF, DMARC, and blacklist lookups. DNS fallback runs when <code>MXTOOLBOX_API_KEY</code> is absent — skipped, never faked as pass.</p>
-            <span class="module-status ready">Ready</span>
-          </article>
-          <article class="module-card">
-            <div class="module-icon" aria-hidden="true">🪟</div>
-            <h3>Popups &amp; Banners</h3>
-            <p>Selector-based visibility for cookie banners, newsletter blocks, CTAs, and live chat widgets. Mark elements as critical to fail fast when conversion paths disappear.</p>
-            <span class="module-status ready">Ready</span>
-          </article>
-          <article class="module-card">
-            <div class="module-icon" aria-hidden="true">📊</div>
-            <h3>Reports</h3>
-            <p>JSON for dashboards and CI, HTML for managers. Category reports for phone, form/popup, and domain. Screenshots and network logs in <code>artifacts/</code>.</p>
-            <span class="module-status ready">Ready</span>
-          </article>
-          <article class="module-card">
-            <div class="module-icon" aria-hidden="true">🔔</div>
-            <h3>Alerts &amp; Automation</h3>
-            <p>Optional webhook notifications via <code>NOTIFIER_WEBHOOK_URL</code>. GitHub Actions workflow ready for scheduled daily runs with repository secrets.</p>
-            <span class="module-status partial">Expandable</span>
-          </article>
+        <div class="preview-panel">
+          <div class="preview-toolbar">
+            <div class="demo-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+            <span class="preview-toolbar-title">Marketing &amp; IT Automation — Daily Check Summary</span>
+            <span class="preview-toolbar-meta" id="demo-updated">Preview</span>
+          </div>
+          <div class="status-row preview-stats" aria-label="Demo status overview">
+            <article class="status-card">
+              <div class="status-icon green" aria-hidden="true">✓</div>
+              <div class="status-label">Forms Passing</div>
+              <div class="status-value">4/4</div>
+              <div class="status-meta">Safe submit guard active</div>
+              <span class="status-pill ok">Healthy</span>
+            </article>
+            <article class="status-card">
+              <div class="status-icon blue" aria-hidden="true">🪟</div>
+              <div class="status-label">Popup Checks</div>
+              <div class="status-value">3/3</div>
+              <div class="status-meta">Banners &amp; widgets</div>
+              <span class="status-pill ok">Passing</span>
+            </article>
+            <article class="status-card">
+              <div class="status-icon purple" aria-hidden="true">📞</div>
+              <div class="status-label">Phone Tests</div>
+              <div class="status-value">Ready</div>
+              <div class="status-meta">Twilio outbound</div>
+              <span class="status-pill info">Configured</span>
+            </article>
+            <article class="status-card">
+              <div class="status-icon orange" aria-hidden="true">🌐</div>
+              <div class="status-label">Domain Health</div>
+              <div class="status-value">Monitoring</div>
+              <div class="status-meta">MX · SPF · DMARC</div>
+              <span class="status-pill ok">Active</span>
+            </article>
+            <article class="status-card">
+              <div class="status-icon blue" aria-hidden="true">⏱</div>
+              <div class="status-label">Last Run</div>
+              <div class="status-value">Local</div>
+              <div class="status-meta">Report generated</div>
+              <span class="status-pill info">Local Report</span>
+            </article>
+            <article class="status-card">
+              <div class="status-icon green" aria-hidden="true">🔔</div>
+              <div class="status-label">Open Alerts</div>
+              <div class="status-value">0</div>
+              <div class="status-meta">Webhook optional</div>
+              <span class="status-pill ok">All clear</span>
+            </article>
+          </div>
+          <div class="preview-table-wrap">
+            <table class="demo-table">
+              <thead>
+                <tr>
+                  <th>Target</th>
+                  <th>Form</th>
+                  <th>Popup</th>
+                  <th>Phone</th>
+                  <th>Domain</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Main Website</strong></td>
+                  <td><span class="result-badge pass">Pass</span></td>
+                  <td><span class="result-badge pass">Pass</span></td>
+                  <td><span class="result-badge pass">Ready</span></td>
+                  <td><span class="result-badge pass">Clear</span></td>
+                  <td>Demo</td>
+                </tr>
+                <tr>
+                  <td><strong>Landing Page A</strong></td>
+                  <td><span class="result-badge pass">Pass</span></td>
+                  <td><span class="result-badge pass">Pass</span></td>
+                  <td><span class="result-badge skip">Skipped</span></td>
+                  <td><span class="result-badge pass">Clear</span></td>
+                  <td>Demo</td>
+                </tr>
+                <tr>
+                  <td><strong>Support Line UK</strong></td>
+                  <td><span class="result-badge skip">N/A</span></td>
+                  <td><span class="result-badge skip">N/A</span></td>
+                  <td><span class="result-badge pass">Ready</span></td>
+                  <td><span class="result-badge pass">MX OK</span></td>
+                  <td>Demo</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </section>
 
     <!-- Workflow -->
-    <section class="section" id="workflow" style="background: var(--bg-elevated); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">
+    <section class="section" id="workflow">
       <div class="container reveal">
         <div class="section-header">
           <div class="section-eyebrow">How it works</div>
-          <h2>From config to alert in four steps</h2>
+          <h2>Four steps to consistent daily checks</h2>
           <p>A repeatable pipeline your team can run locally or on a schedule.</p>
         </div>
         <div class="workflow-steps">
           <div class="workflow-step">
-            <div class="step-num">1</div>
-            <h3>Configure target</h3>
-            <p>Edit <code>config/targets.json</code> with websites, phone numbers, domains, popup selectors, and safety flags.</p>
+            <div class="step-num" aria-hidden="true">1</div>
+            <div class="step-icon" aria-hidden="true">⚙️</div>
+            <h3>Configure targets</h3>
+            <p>Edit <code>config/targets.json</code> with websites, phone numbers, domains, and popup selectors.</p>
           </div>
           <div class="workflow-step">
-            <div class="step-num">2</div>
+            <div class="step-num" aria-hidden="true">2</div>
+            <div class="step-icon" aria-hidden="true">▶️</div>
             <h3>Run checks</h3>
-            <p>Playwright form/popup tests, Twilio outbound calls, and MXToolbox or DNS domain health run in one command.</p>
+            <p>Playwright form/popup tests, Twilio phone calls, and domain health run in one command.</p>
           </div>
           <div class="workflow-step">
-            <div class="step-num">3</div>
-            <h3>Capture evidence</h3>
-            <p>Screenshots, network logs, and per-category JSON outputs land in <code>artifacts/</code> and <code>reports/</code>.</p>
+            <div class="step-num" aria-hidden="true">3</div>
+            <div class="step-icon" aria-hidden="true">📄</div>
+            <h3>Generate report</h3>
+            <p>Combined JSON and HTML reports with screenshots and logs in <code>artifacts/</code>.</p>
           </div>
           <div class="workflow-step">
-            <div class="step-num">4</div>
-            <h3>Send alerts &amp; report</h3>
-            <p>Combined HTML report highlights failures and next actions. Optional webhook fires on critical issues.</p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Demo Dashboard -->
-    <section class="section" id="demo">
-      <div class="container reveal">
-        <div class="section-header">
-          <div class="section-eyebrow">Demo dashboard</div>
-          <h2>What your monitoring view could look like</h2>
-          <p>Mock data illustrating a future business-check dashboard. Real runs write to <code>reports/run-report.html</code>.</p>
-        </div>
-        <div class="demo-dashboard">
-          <div class="demo-toolbar">
-            <div class="demo-dots" aria-hidden="true"><span></span><span></span><span></span></div>
-            <span class="demo-toolbar-title">QA Automation Hub — Target Overview</span>
-            <span class="demo-toolbar-title" id="demo-updated">Updated just now</span>
-          </div>
-          <div class="demo-body">
-            <aside class="demo-sidebar">
-              <div class="demo-nav-item active">📋 All targets</div>
-              <div class="demo-nav-item">🌐 Site tests</div>
-              <div class="demo-nav-item">📞 Phone tests</div>
-              <div class="demo-nav-item">🛡 Domain health</div>
-              <div class="demo-nav-item">📊 Reports</div>
-            </aside>
-            <div class="demo-main">
-              <table class="demo-table">
-                <thead>
-                  <tr>
-                    <th>Target</th>
-                    <th>Form</th>
-                    <th>Popup</th>
-                    <th>Phone</th>
-                    <th>Domain</th>
-                    <th>Last check</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td><strong>Main Website</strong></td>
-                    <td><span class="result-badge pass">Pass</span></td>
-                    <td><span class="result-badge pass">Pass</span></td>
-                    <td><span class="result-badge pass">Answered</span></td>
-                    <td><span class="result-badge pass">Clear</span></td>
-                    <td>2h ago</td>
-                  </tr>
-                  <tr>
-                    <td><strong>Landing Page A</strong></td>
-                    <td><span class="result-badge pass">Pass</span></td>
-                    <td><span class="result-badge warn">Warn</span></td>
-                    <td><span class="result-badge skip">Skipped</span></td>
-                    <td><span class="result-badge pass">Clear</span></td>
-                    <td>2h ago</td>
-                  </tr>
-                  <tr>
-                    <td><strong>Support Line UK</strong></td>
-                    <td><span class="result-badge skip">N/A</span></td>
-                    <td><span class="result-badge skip">N/A</span></td>
-                    <td><span class="result-badge pass">Started</span></td>
-                    <td><span class="result-badge pass">MX OK</span></td>
-                    <td>2h ago</td>
-                  </tr>
-                  <tr>
-                    <td><strong>Brand Domain</strong></td>
-                    <td><span class="result-badge skip">N/A</span></td>
-                    <td><span class="result-badge skip">N/A</span></td>
-                    <td><span class="result-badge skip">N/A</span></td>
-                    <td><span class="result-badge warn">SPF warn</span></td>
-                    <td>2h ago</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+            <div class="step-num" aria-hidden="true">4</div>
+            <div class="step-icon" aria-hidden="true">👁</div>
+            <h3>Review alerts</h3>
+            <p>Review failures and next actions. Optional webhook fires on critical issues.</p>
           </div>
         </div>
       </div>
     </section>
 
     <!-- Business Value -->
-    <section class="section" id="value">
+    <section class="section section-alt" id="value">
       <div class="container reveal">
         <div class="section-header">
           <div class="section-eyebrow">Business value</div>
-          <h2>Less manual checking, more confidence</h2>
-          <p>This toolkit reduces repetitive work across marketing and IT — with honest reporting when APIs or keys are missing.</p>
+          <h2>Built for managers who need confidence, not complexity</h2>
+          <p>Less manual checking across Marketing and IT — with honest reporting when APIs or keys are missing.</p>
         </div>
-        <div class="value-grid">
-          <article class="value-card">
-            <div class="value-icon" aria-hidden="true">📝</div>
+        <div class="value-grid value-grid-manager">
+          <article class="value-card value-card-highlight">
+            <div class="value-icon" aria-hidden="true">⏱</div>
             <div>
-              <h3>Fewer manual lead-form checks</h3>
-              <p>Automated Playwright runs verify forms load, accept input, and show success states — without risky production submissions unless explicitly enabled.</p>
+              <h3>Saves time on manual lead checks</h3>
+              <p>Automated Playwright runs verify forms, popups and conversion paths without dialling every line or clicking through sites by hand.</p>
             </div>
           </article>
           <article class="value-card">
-            <div class="value-icon" aria-hidden="true">📞</div>
+            <div class="value-icon" aria-hidden="true">🔍</div>
             <div>
-              <h3>Phone line assurance</h3>
-              <p>Outbound Twilio tests confirm numbers are reachable before campaigns go live — no more dialling every line by hand.</p>
+              <h3>Catch issues earlier</h3>
+              <p>Broken forms, missing popups, unreachable phone lines and domain problems surface before campaigns go live.</p>
             </div>
           </article>
           <article class="value-card">
-            <div class="value-icon" aria-hidden="true">🪟</div>
+            <div class="value-icon" aria-hidden="true">📤</div>
             <div>
-              <h3>Popup &amp; chat visibility</h3>
-              <p>Cookie banners, newsletter signups, and live chat widgets are checked with selectors — catch broken conversion paths early.</p>
+              <h3>Shareable reports</h3>
+              <p>HTML summaries highlight failures, warnings and next actions. JSON feeds future dashboards and scheduled digests.</p>
             </div>
           </article>
           <article class="value-card">
-            <div class="value-icon" aria-hidden="true">🌐</div>
+            <div class="value-icon" aria-hidden="true">🚀</div>
             <div>
-              <h3>Proactive domain monitoring</h3>
-              <p>MX, SPF, DMARC, blacklist, and IP health in one run. DNS fallback ensures useful signal even without MXToolbox API keys.</p>
+              <h3>Future-ready automation</h3>
+              <p>Supports GitHub Actions scheduling, Twilio outbound dialling, and MXToolbox API integration as your stack matures.</p>
             </div>
           </article>
-          <article class="value-card">
-            <div class="value-icon" aria-hidden="true">📊</div>
+          <article class="value-card value-card-wide">
+            <div class="value-icon" aria-hidden="true">✓</div>
             <div>
-              <h3>Manager-ready reporting</h3>
-              <p>HTML summaries highlight failures, warnings, and next actions. JSON feeds future dashboards and scheduled digests.</p>
-            </div>
-          </article>
-          <article class="value-card">
-            <div class="value-icon" aria-hidden="true">🔒</div>
-            <div>
-              <h3>Honest, safe automation</h3>
-              <p>Missing API keys return <strong>skipped</strong>, not fake passes. Forms won't submit unless <code>safeToSubmit: true</code>. Secrets stay in <code>.env</code>.</p>
+              <h3>More consistent Marketing + IT checks</h3>
+              <p>One config file, one command, and the same checks every day — whether run locally on a laptop or on a schedule in CI. Missing API keys return <strong>skipped</strong>, not fake passes.</p>
             </div>
           </article>
         </div>
       </div>
     </section>
 
-    <!-- Documentation -->
-    <section class="section" id="docs" style="background: var(--bg-elevated); border-top: 1px solid var(--border);">
+    <!-- Technical documentation (accordions) -->
+    <section class="section" id="docs">
       <div class="container reveal">
         <div class="section-header">
-          <div class="section-eyebrow">Documentation</div>
+          <div class="section-eyebrow">Technical reference</div>
           <h2>Setup, config &amp; operations</h2>
-          <p>All technical details from the project README — organised for quick reference.</p>
+          <p>All technical details from the project README — organised for developers and IT.</p>
         </div>
 
-        <div class="docs-grid" id="setup">
-          <article class="doc-panel">
-            <h3>🚀 Quick start</h3>
-            <ol>
-              <li>Clone the repository and run <code>npm install</code>.</li>
-              <li>Copy <code>.env.example</code> to <code>.env</code> (never commit real keys).</li>
-              <li>Edit <code>config/targets.json</code> with your websites, phone numbers, and domains.</li>
-              <li>Install Playwright: <code>npx playwright install chromium</code>.</li>
-              <li>Run checks: <code>npm run test:e2e</code></li>
-              <li>Open <code>reports/run-report.html</code> for results.</li>
-            </ol>
-            <pre><code>npm install
+        <div class="accordion" id="setup">
+          <details class="accordion-item" open>
+            <summary class="accordion-trigger">
+              <span class="accordion-icon" aria-hidden="true">🚀</span>
+              <span class="accordion-title">Local quick start</span>
+              <span class="accordion-chevron" aria-hidden="true"></span>
+            </summary>
+            <div class="accordion-body">
+              <ol>
+                <li>Clone the repository and run <code>npm install</code>.</li>
+                <li>Copy <code>.env.example</code> to <code>.env</code> (never commit real keys).</li>
+                <li>Edit <code>config/targets.json</code> with your websites, phone numbers, and domains.</li>
+                <li>Install Playwright: <code>npx playwright install chromium</code>.</li>
+                <li>Run checks: <code>npm run test:e2e</code></li>
+                <li>Open <code>reports/run-report.html</code> for results.</li>
+              </ol>
+              <pre><code>npm install
 npx playwright install chromium
 cp .env.example .env
 npm run test:e2e
 open reports/run-report.html</code></pre>
-            <p>For placeholder <code>example.com</code> targets:</p>
-            <pre><code>ALLOW_PLACEHOLDER_TARGETS=true npm run test:form-popup</code></pre>
-          </article>
+              <p>For placeholder <code>example.com</code> targets:</p>
+              <pre><code>ALLOW_PLACEHOLDER_TARGETS=true npm run test:form-popup</code></pre>
+            </div>
+          </details>
 
-          <article class="doc-panel">
-            <h3>📁 Project structure</h3>
-            <pre><code>.
+          <details class="accordion-item">
+            <summary class="accordion-trigger">
+              <span class="accordion-icon" aria-hidden="true">📁</span>
+              <span class="accordion-title">Directory structure</span>
+              <span class="accordion-chevron" aria-hidden="true"></span>
+            </summary>
+            <div class="accordion-body">
+              <pre><code>.
 ├── config/targets.json
 ├── docs/                    # GitHub Pages
 ├── reports/                 # Generated (gitignored)
@@ -382,58 +387,25 @@ open reports/run-report.html</code></pre>
 │   ├── reporting/
 │   └── pages/               # Playwright page objects
 └── tests/form.spec.js</code></pre>
-          </article>
+            </div>
+          </details>
 
-          <article class="doc-panel" id="phone-doc">
-            <h3>📞 Phone test automation</h3>
-            <p><strong>Ready:</strong> Outbound line checks via Twilio from <code>config/targets.json</code>. Records honest statuses — call started, answered, busy, no answer, failed, or skipped.</p>
-            <p><strong>Expandable:</strong> Current version polls Twilio call status. For deeper IVR/answer analytics, add a Twilio status callback URL in environment variables.</p>
-            <ul>
-              <li><code>npm run test:phone</code> — phone checks only</li>
-              <li><code>npm run test:twilio</code> — optional SMS/OTP verification</li>
-            </ul>
-          </article>
-
-          <article class="doc-panel" id="forms-doc">
-            <h3>🌐 Website form testing</h3>
-            <p><strong>Safe-by-default form automation:</strong></p>
-            <ul>
-              <li>Opens each target URL and verifies the form is visible.</li>
-              <li>Fills fields with test data (configured fields or auto-detected inputs).</li>
-              <li>Only submits when <code>safeToSubmit: true</code>.</li>
-              <li>Checks success selectors, URL tokens, and expected confirmation text.</li>
-            </ul>
-            <p><code>npm run test:form-popup</code> — Playwright website checks only.</p>
-          </article>
-
-          <article class="doc-panel" id="popups-doc">
-            <h3>🪟 Popup, banner &amp; live chat</h3>
-            <ul>
-              <li><strong>Popups &amp; cookie banners</strong> — selector visibility with optional expected text and criticality flags.</li>
-              <li><strong>Newsletter &amp; CTA blocks</strong> — validate conversion elements before campaigns go live.</li>
-              <li><strong>Live chat widgets</strong> — mark as critical to fail fast when support entry points disappear.</li>
-            </ul>
-            <p>Configure in <code>website.popupChecks[]</code> with <code>name</code>, <code>selector</code>, <code>expectedText</code>, <code>critical</code>.</p>
-          </article>
-
-          <article class="doc-panel" id="domain-doc">
-            <h3>🛡 Domain &amp; IP health</h3>
-            <p><strong>MXToolbox (when API key exists):</strong> MX, SPF, DMARC, and blacklist lookups per target domain/IP.</p>
-            <p><strong>DNS fallback (no API key):</strong> Clearly skips API checks and uses DNS for MX/SPF/DMARC, resolution, and reverse lookup.</p>
-            <p><code>npm run test:domain</code> — domain/IP/email health only.</p>
-          </article>
-
-          <article class="doc-panel">
-            <h3>⚙️ Config (<code>targets.json</code>)</h3>
-            <p>Each target supports:</p>
-            <ul>
-              <li><code>website.url</code>, <code>formUrl</code>, <code>safeToSubmit</code>, <code>formSelector</code>, <code>expectedSuccessText</code></li>
-              <li><code>website.popupChecks[]</code></li>
-              <li><code>phone.enabled</code>, <code>number</code>, <code>expectedBehaviour</code></li>
-              <li><code>domain.enabled</code>, <code>domain</code>, <code>ip</code></li>
-            </ul>
-            <p>Set <code>enabled: false</code> on a target to skip it.</p>
-            <pre><code>{
+          <details class="accordion-item">
+            <summary class="accordion-trigger">
+              <span class="accordion-icon" aria-hidden="true">⚙️</span>
+              <span class="accordion-title">Config (<code>targets.json</code>)</span>
+              <span class="accordion-chevron" aria-hidden="true"></span>
+            </summary>
+            <div class="accordion-body">
+              <p>Each target supports:</p>
+              <ul>
+                <li><code>website.url</code>, <code>formUrl</code>, <code>safeToSubmit</code>, <code>formSelector</code>, <code>expectedSuccessText</code></li>
+                <li><code>website.popupChecks[]</code></li>
+                <li><code>phone.enabled</code>, <code>number</code>, <code>expectedBehaviour</code></li>
+                <li><code>domain.enabled</code>, <code>domain</code>, <code>ip</code></li>
+              </ul>
+              <p>Set <code>enabled: false</code> on a target to skip it.</p>
+              <pre><code>{
   "targets": [{
     "name": "Main Website",
     "enabled": true,
@@ -452,137 +424,230 @@ open reports/run-report.html</code></pre>
     }
   }]
 }</code></pre>
-          </article>
+            </div>
+          </details>
 
-          <article class="doc-panel" id="reports-doc">
-            <h3>📊 Reports &amp; outputs</h3>
-            <p>Every full run produces:</p>
-            <ul>
-              <li><strong>JSON:</strong> <code>reports/run-report.json</code> — machine-readable for dashboards or CI artifacts.</li>
-              <li><strong>HTML:</strong> <code>reports/run-report.html</code> — manager-friendly failures, warnings, and next actions.</li>
-            </ul>
-            <p>Category reports saved separately (phone, form/popup, domain). Screenshots and network logs in <code>artifacts/</code>.</p>
-            <p><code>npm run report</code> — build from existing JSON · <code>npm run clean:reports</code> — remove generated files.</p>
-          </article>
-
-          <article class="doc-panel">
-            <h3>🔑 Environment variables</h3>
-            <table class="env-table">
-              <thead>
-                <tr>
-                  <th>Variable</th>
-                  <th>Required for</th>
-                  <th>If missing</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td><code>TWILIO_ACCOUNT_SID</code>, <code>AUTH_TOKEN</code>, <code>FROM_NUMBER</code></td>
-                  <td>Phone tests</td>
-                  <td>Skipped</td>
-                </tr>
-                <tr>
-                  <td><code>MXTOOLBOX_API_KEY</code></td>
-                  <td>API reputation lookups</td>
-                  <td>DNS fallback</td>
-                </tr>
-                <tr>
-                  <td><code>NOTIFIER_WEBHOOK_URL</code></td>
-                  <td>Alerts</td>
-                  <td>Skipped</td>
-                </tr>
-              </tbody>
-            </table>
-          </article>
-
-          <article class="doc-panel">
-            <h3>⚡ NPM scripts</h3>
-            <pre><code>npm run test:e2e          # all checks + report
+          <details class="accordion-item">
+            <summary class="accordion-trigger">
+              <span class="accordion-icon" aria-hidden="true">⚡</span>
+              <span class="accordion-title">NPM scripts</span>
+              <span class="accordion-chevron" aria-hidden="true"></span>
+            </summary>
+            <div class="accordion-body">
+              <pre><code>npm run test:e2e          # all checks + report
 npm run test:form-popup   # Playwright only
 npm run test:phone        # Twilio phone checks
 npm run test:domain       # domain/IP health
 npm run test:twilio       # SMS/OTP verification
 npm run report            # build from existing JSON
 npm run clean:reports     # remove generated files</code></pre>
-          </article>
+            </div>
+          </details>
 
-          <article class="doc-panel">
-            <h3>🔒 Safety rules</h3>
-            <ul>
-              <li>API keys stay in <code>.env</code> (gitignored) — never committed.</li>
-              <li>Missing API keys return <strong>skipped</strong>, not fake passes.</li>
-              <li>Forms are not submitted unless <code>safeToSubmit: true</code>.</li>
-              <li>Phone answer detection uses Twilio status polling only.</li>
-            </ul>
-          </article>
+          <details class="accordion-item">
+            <summary class="accordion-trigger">
+              <span class="accordion-icon" aria-hidden="true">🔑</span>
+              <span class="accordion-title">Environment variables</span>
+              <span class="accordion-chevron" aria-hidden="true"></span>
+            </summary>
+            <div class="accordion-body">
+              <p>Copy <code>.env.example</code> to <code>.env</code> and fill in only what you need.</p>
+              <table class="env-table">
+                <thead>
+                  <tr>
+                    <th>Variable</th>
+                    <th>Required for</th>
+                    <th>If missing</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>TWILIO_ACCOUNT_SID</code>, <code>AUTH_TOKEN</code>, <code>FROM_NUMBER</code></td>
+                    <td>Phone tests</td>
+                    <td>Skipped</td>
+                  </tr>
+                  <tr>
+                    <td><code>MXTOOLBOX_API_KEY</code></td>
+                    <td>API reputation lookups</td>
+                    <td>DNS fallback</td>
+                  </tr>
+                  <tr>
+                    <td><code>NOTIFIER_WEBHOOK_URL</code></td>
+                    <td>Alerts</td>
+                    <td>Skipped</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </details>
 
-          <article class="doc-panel">
-            <h3>☁️ GitHub Actions</h3>
-            <p>Workflow: <code>.github/workflows/main.yml</code></p>
-            <p>Add repository secrets:</p>
-            <ul>
-              <li><code>TWILIO_ACCOUNT_SID</code>, <code>TWILIO_AUTH_TOKEN</code>, <code>TWILIO_FROM_NUMBER</code></li>
-              <li><code>MXTOOLBOX_API_KEY</code> (optional)</li>
-              <li><code>NOTIFIER_WEBHOOK_URL</code> (optional)</li>
-            </ul>
-          </article>
+          <details class="accordion-item">
+            <summary class="accordion-trigger">
+              <span class="accordion-icon" aria-hidden="true">🔒</span>
+              <span class="accordion-title">Safety rules</span>
+              <span class="accordion-chevron" aria-hidden="true"></span>
+            </summary>
+            <div class="accordion-body">
+              <ul>
+                <li>API keys stay in <code>.env</code> (gitignored) — never committed.</li>
+                <li>Missing API keys return <strong>skipped</strong>, not fake passes.</li>
+                <li>Forms are not submitted unless <code>safeToSubmit: true</code>.</li>
+                <li>Phone answer detection uses Twilio status polling only.</li>
+              </ul>
+            </div>
+          </details>
+
+          <details class="accordion-item" id="forms-doc">
+            <summary class="accordion-trigger">
+              <span class="accordion-icon" aria-hidden="true">🌐</span>
+              <span class="accordion-title">Website form testing</span>
+              <span class="accordion-chevron" aria-hidden="true"></span>
+            </summary>
+            <div class="accordion-body">
+              <p><strong>Safe-by-default form automation:</strong></p>
+              <ul>
+                <li>Opens each target URL and verifies the form is visible.</li>
+                <li>Fills fields with test data (configured fields or auto-detected inputs).</li>
+                <li>Only submits when <code>safeToSubmit: true</code>.</li>
+                <li>Checks success selectors, URL tokens, and expected confirmation text.</li>
+              </ul>
+              <p><code>npm run test:form-popup</code> — Playwright website checks only.</p>
+            </div>
+          </details>
+
+          <details class="accordion-item" id="popups-doc">
+            <summary class="accordion-trigger">
+              <span class="accordion-icon" aria-hidden="true">🪟</span>
+              <span class="accordion-title">Popup, banner &amp; live chat</span>
+              <span class="accordion-chevron" aria-hidden="true"></span>
+            </summary>
+            <div class="accordion-body">
+              <ul>
+                <li><strong>Popups &amp; cookie banners</strong> — selector visibility with optional expected text and criticality flags.</li>
+                <li><strong>Newsletter &amp; CTA blocks</strong> — validate conversion elements before campaigns go live.</li>
+                <li><strong>Live chat widgets</strong> — mark as critical to fail fast when support entry points disappear.</li>
+              </ul>
+              <p>Configure in <code>website.popupChecks[]</code> with <code>name</code>, <code>selector</code>, <code>expectedText</code>, <code>critical</code>.</p>
+            </div>
+          </details>
+
+          <details class="accordion-item" id="phone-doc">
+            <summary class="accordion-trigger">
+              <span class="accordion-icon" aria-hidden="true">📞</span>
+              <span class="accordion-title">Phone test automation</span>
+              <span class="accordion-chevron" aria-hidden="true"></span>
+            </summary>
+            <div class="accordion-body">
+              <p><strong>Ready:</strong> Outbound line checks via Twilio from <code>config/targets.json</code>. Records honest statuses — call started, answered, busy, no answer, failed, or skipped.</p>
+              <p><strong>Expandable:</strong> Current version polls Twilio call status. For deeper IVR/answer analytics, add a Twilio status callback URL in environment variables.</p>
+              <ul>
+                <li><code>npm run test:phone</code> — phone checks only</li>
+                <li><code>npm run test:twilio</code> — optional SMS/OTP verification</li>
+              </ul>
+            </div>
+          </details>
+
+          <details class="accordion-item" id="domain-doc">
+            <summary class="accordion-trigger">
+              <span class="accordion-icon" aria-hidden="true">🛡</span>
+              <span class="accordion-title">Domain &amp; IP health</span>
+              <span class="accordion-chevron" aria-hidden="true"></span>
+            </summary>
+            <div class="accordion-body">
+              <p><strong>MXToolbox (when API key exists):</strong> MX, SPF, DMARC, and blacklist lookups per target domain/IP.</p>
+              <p><strong>DNS fallback (no API key):</strong> Clearly skips API checks and uses DNS for MX/SPF/DMARC, resolution, and reverse lookup.</p>
+              <p><code>npm run test:domain</code> — domain/IP/email health only.</p>
+            </div>
+          </details>
+
+          <details class="accordion-item" id="reports-doc">
+            <summary class="accordion-trigger">
+              <span class="accordion-icon" aria-hidden="true">📊</span>
+              <span class="accordion-title">Reports &amp; outputs</span>
+              <span class="accordion-chevron" aria-hidden="true"></span>
+            </summary>
+            <div class="accordion-body">
+              <p>Every full run produces:</p>
+              <ul>
+                <li><strong>JSON:</strong> <code>reports/run-report.json</code> — machine-readable for dashboards or CI artifacts.</li>
+                <li><strong>HTML:</strong> <code>reports/run-report.html</code> — manager-friendly failures, warnings, and next actions.</li>
+              </ul>
+              <p>Category reports saved separately (phone, form/popup, domain). Screenshots and network logs in <code>artifacts/</code>.</p>
+              <p><code>npm run report</code> — build from existing JSON · <code>npm run clean:reports</code> — remove generated files.</p>
+            </div>
+          </details>
+
+          <details class="accordion-item">
+            <summary class="accordion-trigger">
+              <span class="accordion-icon" aria-hidden="true">🌐</span>
+              <span class="accordion-title">GitHub Pages</span>
+              <span class="accordion-chevron" aria-hidden="true"></span>
+            </summary>
+            <div class="accordion-body">
+              <p>This landing page is published from the <code>/docs</code> folder on GitHub Pages.</p>
+              <p>Live site: <a href="https://philr029.github.io/site-test-phone-test-and-domain-checks/" target="_blank" rel="noopener">philr029.github.io/site-test-phone-test-and-domain-checks</a></p>
+              <p>Enable in repository Settings → Pages → Source: Deploy from branch <code>main</code>, folder <code>/docs</code>.</p>
+            </div>
+          </details>
+
+          <details class="accordion-item">
+            <summary class="accordion-trigger">
+              <span class="accordion-icon" aria-hidden="true">☁️</span>
+              <span class="accordion-title">GitHub Actions</span>
+              <span class="accordion-chevron" aria-hidden="true"></span>
+            </summary>
+            <div class="accordion-body">
+              <p>Workflow: <code>.github/workflows/main.yml</code></p>
+              <p>Add repository secrets:</p>
+              <ul>
+                <li><code>TWILIO_ACCOUNT_SID</code>, <code>TWILIO_AUTH_TOKEN</code>, <code>TWILIO_FROM_NUMBER</code></li>
+                <li><code>MXTOOLBOX_API_KEY</code> (optional)</li>
+                <li><code>NOTIFIER_WEBHOOK_URL</code> (optional)</li>
+              </ul>
+            </div>
+          </details>
         </div>
       </div>
     </section>
 
-    <!-- Roadmap / Next Steps -->
-    <section class="section" id="roadmap">
+    <!-- Roadmap -->
+    <section class="section section-alt" id="roadmap">
       <div class="container reveal">
         <div class="section-header">
-          <div class="section-eyebrow">Next steps</div>
+          <div class="section-eyebrow">Roadmap</div>
           <h2>Future improvements</h2>
           <p>Planned enhancements to turn this into a full internal monitoring platform.</p>
         </div>
         <div class="roadmap-grid">
           <article class="roadmap-card">
-            <h3>Twilio dialler integration</h3>
-            <p>Deeper IVR and answer analytics via status callback URLs.</p>
-            <span class="module-status planned">Planned</span>
-          </article>
-          <article class="roadmap-card">
             <h3>Scheduled GitHub Actions</h3>
             <p>Daily or weekly cron runs with artifact upload and digest delivery.</p>
-            <span class="module-status planned">Planned</span>
+            <span class="dash-badge api">Planned</span>
           </article>
           <article class="roadmap-card">
-            <h3>MXToolbox API integration</h3>
-            <p>Full API coverage with rate-limit handling and historical trends.</p>
-            <span class="module-status partial">Partial</span>
+            <h3>Twilio dialler integration</h3>
+            <p>Deeper IVR and answer analytics via status callback URLs.</p>
+            <span class="dash-badge api">Planned</span>
           </article>
           <article class="roadmap-card">
             <h3>Email / Teams alerts</h3>
             <p>Manager digests and instant notifications on critical failures.</p>
-            <span class="module-status planned">Planned</span>
-          </article>
-          <article class="roadmap-card">
-            <h3>CSV / Excel reports</h3>
-            <p>Export run history for spreadsheets and executive summaries.</p>
-            <span class="module-status planned">Planned</span>
+            <span class="dash-badge api">Planned</span>
           </article>
           <article class="roadmap-card">
             <h3>Admin login &amp; dashboard</h3>
             <p>Authenticated web UI with trend charts and per-target history.</p>
-            <span class="module-status planned">Planned</span>
+            <span class="dash-badge api">Planned</span>
+          </article>
+          <article class="roadmap-card">
+            <h3>CSV / Excel reports</h3>
+            <p>Export run history for spreadsheets and executive summaries.</p>
+            <span class="dash-badge api">Planned</span>
           </article>
           <article class="roadmap-card">
             <h3>Dashboard trend charts</h3>
             <p>Historical pass/fail trends per target over time.</p>
-            <span class="module-status planned">Planned</span>
-          </article>
-          <article class="roadmap-card">
-            <h3>DKIM selector checks</h3>
-            <p>Per-selector DKIM validation once selectors are configured.</p>
-            <span class="module-status planned">Planned</span>
-          </article>
-          <article class="roadmap-card">
-            <h3>Scheduled manager digest</h3>
-            <p>Daily/weekly HTML report email delivery.</p>
-            <span class="module-status planned">Planned</span>
+            <span class="dash-badge api">Planned</span>
           </article>
         </div>
       </div>
@@ -592,7 +657,7 @@ npm run clean:reports     # remove generated files</code></pre>
     <section class="container">
       <div class="cta-band reveal">
         <h2>Ready to show your team?</h2>
-        <p>Clone the repo, configure targets, and run your first full check in minutes.</p>
+        <p>Configure targets, run your first full check, and share the HTML report with stakeholders.</p>
         <div class="cta-band-actions">
           <a class="btn btn-primary" href="https://github.com/philr029/site-test-phone-test-and-domain-checks" target="_blank" rel="noopener">View on GitHub</a>
           <a class="btn btn-secondary" href="#setup">Setup guide</a>
@@ -603,12 +668,23 @@ npm run clean:reports     # remove generated files</code></pre>
 
   <footer class="site-footer">
     <div class="container footer-inner">
-      <p>QA Automation Hub — built for practical daily marketing and IT operations. Missing API keys are reported as <strong>skipped</strong>, not fake passes.</p>
+      <div class="footer-brand">
+        <span class="brand-logo footer-logo" aria-hidden="true">◆</span>
+        <div>
+          <strong>Marketing &amp; IT Automation Dashboard</strong>
+          <p>Honest automation — missing API keys are reported as <strong>skipped</strong>, not fake passes.</p>
+        </div>
+      </div>
       <div class="footer-links">
         <a href="https://github.com/philr029/site-test-phone-test-and-domain-checks" target="_blank" rel="noopener">Repository</a>
         <a href="#setup">Setup</a>
+        <a href="#reports-doc">Reports</a>
+        <a href="#preview">Demo preview</a>
         <a href="#roadmap">Roadmap</a>
       </div>
+    </div>
+    <div class="container footer-meta">
+      <p>© 2026 · Internal QA automation for Marketing &amp; IT lead-quality monitoring</p>
     </div>
   </footer>
 </body>
