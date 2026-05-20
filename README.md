@@ -15,7 +15,10 @@ Public docs: https://philr029.github.io/site-test-phone-test-and-domain-checks/
 ```text
 .
 ├── config/targets.json          # Beginner-friendly target config
-├── docs/index.html              # GitHub Pages landing page
+├── docs/
+│   ├── index.html               # GitHub Pages landing page
+│   ├── styles.css               # Dashboard styles (light/dark)
+│   └── script.js                # Theme toggle & interactions
 ├── reports/                     # Generated reports (gitignored)
 ├── src/
 │   ├── phone-test.js            # Outbound phone line checks
