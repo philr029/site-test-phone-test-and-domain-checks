@@ -1,11 +1,11 @@
 # site-test-phone-test-and-domain-checks
 
-End-to-end QA automation architecture for:
-- Playwright-based web form + pop-up validation
-- Twilio SMS/phone verification testing
-- MXToolbox-backed domain/IP health monitoring
+Enterprise-ready QA automation for:
+- Playwright web form + popup validation (POM architecture)
+- Twilio SMS verification with exponential backoff polling
+- MXToolbox domain/IP monitoring with delta-only alerting
 
-## Repository structure
+## Refactored directory tree
 
 ```text
 .
@@ -14,100 +14,105 @@ End-to-end QA automation architecture for:
 │   └── workflows/
 │       └── main.yml
 ├── artifacts/
+│   ├── network/
 │   └── screenshots/
 ├── config/
-│   ├── domain-targets.json
-│   └── form-test.config.json
+│   └── targets.json
+├── data/
+│   └── health_cache.json
 ├── reports/
 ├── src/
+│   ├── config/
+│   │   └── target-loader.js
+│   ├── pages/
+│   │   ├── FormPage.js
+│   │   └── PopupHandler.js
+│   ├── utils/
+│   │   └── notifier.js
 │   ├── domain-health-check.js
-│   ├── form-popup-test.js
 │   ├── run-all.js
 │   └── twilio-verification-test.js
+├── tests/
+│   └── form.spec.js
 ├── package.json
 └── playwright.config.js
 ```
 
-## Setup
+## Multi-target configuration (`config/targets.json`)
 
-1. Clone and enter the repo.
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Copy `.env.example` to `.env` and configure values.
-4. (Local Playwright runtime) install Chromium:
-   ```bash
-   npx playwright install chromium
-   ```
+Each target defines website behavior and MXToolbox domain/IP checks:
+- `name`, `url`
+- `form.selector`, `form.submitSelector`, `form.successSelector`, `form.successUrlContains`
+- `popup.enabled`, `popup.closeSelectors`
+- `mxtoolbox.domains[]`, `mxtoolbox.ips[]`
 
-## Script modules
+Use `TARGET_NAME=<name>` to isolate a single target for execution.
 
-### 1) Form + pop-up testing
-Runs Playwright against `TEST_TARGET_URL`, closes configured pop-ups, fills detected form fields with Faker mock data, submits, and validates success via selector and/or URL.
+## Playwright failure artifacts and debug controls
+
+`playwright.config.js` now retains only failure artifacts:
+- `screenshot: only-on-failure`
+- `video: retain-on-failure`
+- `trace: retain-on-failure`
+- HTML and JSON reporters
+
+`tests/form.spec.js` also captures and stores:
+- failed network requests / >=400 responses
+- console errors
+- popup dismiss events
+
+## Twilio robust polling
+
+`src/twilio-verification-test.js` includes:
+- max timeout-based polling (`TWILIO_OTP_TIMEOUT_MS`, default 60000)
+- exponential backoff between Twilio API polls
+- regex token extraction with capture-group support
+- graceful abort/cleanup of polling wait handlers
+
+## MXToolbox delta reporting
+
+`src/domain-health-check.js` now uses cache state in `data/health_cache.json`:
+- full checks are always logged into `reports/domain-health-report.json`
+- notifications are only sent for state changes (delta-based)
+- critical change logic prevents repeated alert spam when status is unchanged
+
+## Notification utility
+
+`src/utils/notifier.js` supports Slack/Discord/Teams webhook payloads and includes:
+- Environment/Target name
+- Failure details
+- Execution timestamp
+- GitHub Actions run URL (when available)
+
+## Local execution guide
+
+Install dependencies:
 
 ```bash
-npm run test:form-popup
+npm install
+npx playwright install chromium
 ```
 
-Outputs: `reports/form-popup-report.json` and failure screenshots under `artifacts/screenshots/`.
-
-### 2) Automated phone/SMS testing (Twilio)
-Supports two modes:
-- `TWILIO_TEST_MODE=webhook`: sends outbound SMS and validates Twilio accepted/sent state.
-- `TWILIO_TEST_MODE=otp`: polls Twilio inbox for OTP, parses with regex, and can auto-fill OTP using Playwright selectors.
-
-```bash
-npm run test:twilio
-```
-
-Outputs: `reports/twilio-report.json`.
-
-### 3) MXToolbox domain health checks
-Checks domains/IPs from env (`DOMAIN_TARGETS`, `IP_TARGETS`) or `config/domain-targets.json`.
-- If `MXTOOLBOX_API_KEY` exists, calls `/api/v1/lookup/blacklist/{argument}`.
-- If not, uses DNS fallback checks (MX/NS/PTR + SMTP reachability probe for domains).
-- Emits alerts to stdout and optional `ALERT_WEBHOOK_URL`.
-
-```bash
-npm run test:domain
-```
-
-Outputs: `reports/domain-health-report.json`.
-
-## Run all modules
+Run all modules:
 
 ```bash
 npm run test:e2e
 ```
 
-## GitHub Actions
+Run only a specific form target:
 
-Workflow file: `.github/workflows/main.yml`
-- Runs every 24 hours using cron (`0 0 * * *`)
-- Supports manual execution via `workflow_dispatch`
-- Uses secrets for sensitive values (`MXTOOLBOX_API_KEY`, `TWILIO_AUTH_TOKEN`, `TEST_TARGET_URL`, etc.)
-- Uploads reports and failure screenshots as workflow artifacts
+```bash
+TARGET_NAME=example-site npm run test:form-popup
+```
 
-## Suggested GitHub Secrets
+Run only domain checks for one target:
 
-- `TEST_TARGET_URL`
-- `FORM_SELECTOR`
-- `FORM_SUCCESS_SELECTOR`
-- `FORM_SUCCESS_URL_CONTAINS`
-- `FORM_SUBMIT_SELECTOR`
-- `POPUP_CLOSE_SELECTORS`
-- `TWILIO_ACCOUNT_SID`
-- `TWILIO_AUTH_TOKEN`
-- `TWILIO_FROM_NUMBER`
-- `TWILIO_TO_NUMBER`
-- `TWILIO_TEST_MODE`
-- `TWILIO_OTP_REGEX`
-- `TWILIO_EXPECTED_FROM`
-- `OTP_PAGE_URL`
-- `OTP_FIELD_SELECTOR`
-- `OTP_SUBMIT_SELECTOR`
-- `MXTOOLBOX_API_KEY`
-- `DOMAIN_TARGETS`
-- `IP_TARGETS`
-- `ALERT_WEBHOOK_URL`
+```bash
+TARGET_NAME=example-site npm run test:domain
+```
+
+Run only Twilio checks:
+
+```bash
+npm run test:twilio
+```

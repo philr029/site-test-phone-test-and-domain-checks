@@ -1,0 +1,42 @@
+{
+  "environment": "production",
+  "defaults": {
+    "popupCloseSelectors": [
+      "button[aria-label*='close' i]",
+      "button:has-text('Close')",
+      "button:has-text('No thanks')",
+      "button:has-text('Accept')",
+      "button:has-text('Reject')",
+      "button:has-text('Dismiss')"
+    ]
+  },
+  "targets": [
+    {
+      "name": "example-site",
+      "url": "https://example.com",
+      "form": {
+        "selector": "form",
+        "submitSelector": "button[type='submit']",
+        "successSelector": "",
+        "successUrlContains": ""
+      },
+      "popup": {
+        "enabled": true,
+        "closeSelectors": [
+          "button[aria-label*='close' i]",
+          "button:has-text('Close')",
+          "button:has-text('No thanks')",
+          "button:has-text('Accept')"
+        ]
+      },
+      "mxtoolbox": {
+        "domains": [
+          "example.com"
+        ],
+        "ips": [
+          "8.8.8.8"
+        ]
+      }
+    }
+  ]
+}

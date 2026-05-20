@@ -5,31 +5,36 @@ on:
     - cron: '0 0 * * *'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
-  e2e-domain-monitoring:
+  prepare-matrix:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    outputs:
+      form_matrix: ${{ steps.matrix.outputs.form_matrix }}
+      domain_matrix: ${{ steps.matrix.outputs.domain_matrix }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build target matrix
+        id: matrix
+        run: |
+          node -e "const fs=require('fs');const data=JSON.parse(fs.readFileSync('config/targets.json','utf8'));const targets=(data.targets||[]).map(t=>({target:t.name}));const out='form_matrix='+JSON.stringify(targets.length?targets:[{target:'default'}])+'\n'+'domain_matrix='+JSON.stringify(targets.length?targets:[{target:'default'}])+'\n';fs.appendFileSync(process.env.GITHUB_OUTPUT,out);"
+
+  web-form-tests:
+    needs: prepare-matrix
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.prepare-matrix.outputs.form_matrix) }}
     env:
-      TEST_TARGET_URL: ${{ secrets.TEST_TARGET_URL }}
-      FORM_SELECTOR: ${{ secrets.FORM_SELECTOR }}
-      FORM_SUCCESS_SELECTOR: ${{ secrets.FORM_SUCCESS_SELECTOR }}
-      FORM_SUCCESS_URL_CONTAINS: ${{ secrets.FORM_SUCCESS_URL_CONTAINS }}
-      FORM_SUBMIT_SELECTOR: ${{ secrets.FORM_SUBMIT_SELECTOR }}
-      POPUP_CLOSE_SELECTORS: ${{ secrets.POPUP_CLOSE_SELECTORS }}
-      TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
-      TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
-      TWILIO_FROM_NUMBER: ${{ secrets.TWILIO_FROM_NUMBER }}
-      TWILIO_TO_NUMBER: ${{ secrets.TWILIO_TO_NUMBER }}
-      TWILIO_TEST_MODE: ${{ secrets.TWILIO_TEST_MODE }}
-      TWILIO_OTP_REGEX: ${{ secrets.TWILIO_OTP_REGEX }}
-      TWILIO_EXPECTED_FROM: ${{ secrets.TWILIO_EXPECTED_FROM }}
-      OTP_PAGE_URL: ${{ secrets.OTP_PAGE_URL }}
-      OTP_FIELD_SELECTOR: ${{ secrets.OTP_FIELD_SELECTOR }}
-      OTP_SUBMIT_SELECTOR: ${{ secrets.OTP_SUBMIT_SELECTOR }}
-      MXTOOLBOX_API_KEY: ${{ secrets.MXTOOLBOX_API_KEY }}
-      DOMAIN_TARGETS: ${{ secrets.DOMAIN_TARGETS }}
-      IP_TARGETS: ${{ secrets.IP_TARGETS }}
-      ALERT_WEBHOOK_URL: ${{ secrets.ALERT_WEBHOOK_URL }}
+      TARGET_NAME: ${{ matrix.target }}
+      TEST_ENVIRONMENT: ${{ vars.TEST_ENVIRONMENT || 'production' }}
+      NOTIFIER_PROVIDER: ${{ vars.NOTIFIER_PROVIDER }}
+      NOTIFIER_WEBHOOK_URL: ${{ secrets.NOTIFIER_WEBHOOK_URL }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -46,15 +51,101 @@ jobs:
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
 
-      - name: Run form + Twilio + domain checks
-        run: npm run test:e2e
+      - name: Run web form tests
+        run: npm run test:form-popup
 
-      - name: Upload reports and screenshots
+      - name: Upload playwright reports and failure artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: qa-monitoring-artifacts
+          name: web-form-${{ matrix.target }}-artifacts
           path: |
-            reports/*.json
-            artifacts/screenshots/*.png
+            reports/playwright-html
+            reports/playwright-report.json
+            reports/form-popup-report.json
+            artifacts/network
+            test-results
+          if-no-files-found: warn
+
+  domain-health-checks:
+    needs: prepare-matrix
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.prepare-matrix.outputs.domain_matrix) }}
+    env:
+      TARGET_NAME: ${{ matrix.target }}
+      TEST_ENVIRONMENT: ${{ vars.TEST_ENVIRONMENT || 'production' }}
+      MXTOOLBOX_API_KEY: ${{ secrets.MXTOOLBOX_API_KEY }}
+      NOTIFIER_PROVIDER: ${{ vars.NOTIFIER_PROVIDER }}
+      NOTIFIER_WEBHOOK_URL: ${{ secrets.NOTIFIER_WEBHOOK_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run domain checks
+        run: npm run test:domain
+
+      - name: Upload domain reports and cache
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: domain-${{ matrix.target }}-artifacts
+          path: |
+            reports/domain-health-report.json
+            data/health_cache.json
+          if-no-files-found: warn
+
+  twilio-checks:
+    runs-on: ubuntu-latest
+    env:
+      TEST_ENVIRONMENT: ${{ vars.TEST_ENVIRONMENT || 'production' }}
+      NOTIFIER_PROVIDER: ${{ vars.NOTIFIER_PROVIDER }}
+      NOTIFIER_WEBHOOK_URL: ${{ secrets.NOTIFIER_WEBHOOK_URL }}
+      TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
+      TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
+      TWILIO_FROM_NUMBER: ${{ secrets.TWILIO_FROM_NUMBER }}
+      TWILIO_TO_NUMBER: ${{ secrets.TWILIO_TO_NUMBER }}
+      TWILIO_TEST_MODE: ${{ secrets.TWILIO_TEST_MODE }}
+      TWILIO_OTP_REGEX: ${{ secrets.TWILIO_OTP_REGEX }}
+      TWILIO_EXPECTED_FROM: ${{ secrets.TWILIO_EXPECTED_FROM }}
+      TWILIO_OTP_TIMEOUT_MS: ${{ secrets.TWILIO_OTP_TIMEOUT_MS }}
+      OTP_PAGE_URL: ${{ secrets.OTP_PAGE_URL }}
+      OTP_FIELD_SELECTOR: ${{ secrets.OTP_FIELD_SELECTOR }}
+      OTP_SUBMIT_SELECTOR: ${{ secrets.OTP_SUBMIT_SELECTOR }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Twilio checks
+        run: npm run test:twilio
+
+      - name: Upload Twilio report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: twilio-artifacts
+          path: reports/twilio-report.json
           if-no-files-found: warn

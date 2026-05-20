@@ -3,17 +3,14 @@ import path from 'node:path';
 import dns from 'node:dns/promises';
 import net from 'node:net';
 import dotenv from 'dotenv';
+import { flattenMxTargets, getSelectedTargets } from './config/target-loader.js';
+import { sendNotification } from './utils/notifier.js';
 
 dotenv.config();
 
 const repoRoot = process.cwd();
 const reportPath = path.join(repoRoot, 'reports', 'domain-health-report.json');
-
-const parseCsv = (value) =>
-  (value || '')
-    .split(',')
-    .map((v) => v.trim())
-    .filter(Boolean);
+const cachePath = path.join(repoRoot, 'data', 'health_cache.json');
 
 const pingSmtp = (host) =>
   new Promise((resolve) => {
@@ -30,18 +27,6 @@ const pingSmtp = (host) =>
     socket.connect(25, host);
   });
 
-const getTargets = async () => {
-  const configPath = path.join(repoRoot, 'config', 'domain-targets.json');
-  const file = JSON.parse(await fs.readFile(configPath, 'utf8'));
-
-  return {
-    domains: parseCsv(process.env.DOMAIN_TARGETS).length
-      ? parseCsv(process.env.DOMAIN_TARGETS)
-      : file.domains,
-    ips: parseCsv(process.env.IP_TARGETS).length ? parseCsv(process.env.IP_TARGETS) : file.ips
-  };
-};
-
 const callMxToolbox = async (target) => {
   const url = `https://api.mxtoolbox.com/api/v1/lookup/blacklist/${encodeURIComponent(target)}`;
   const response = await fetch(url, {
@@ -56,26 +41,26 @@ const callMxToolbox = async (target) => {
   }
 
   const payload = await response.json();
-  const failedRecords = (payload?.Failed || payload?.failed || []).length;
+  const failedRecords = payload?.Failed || payload?.failed || [];
 
   return {
     source: 'mxtoolbox-api',
     raw: payload,
-    critical: failedRecords > 0,
-    summary: failedRecords > 0 ? `${failedRecords} blacklist findings` : 'No blacklist findings'
+    critical: failedRecords.length > 0,
+    summary:
+      failedRecords.length > 0
+        ? `Blacklisted on ${failedRecords.map((entry) => entry.Name || entry.Blacklist).join(', ')}`
+        : 'Clean',
+    statusCode: failedRecords.length > 0 ? 'BLACKLISTED' : 'CLEAN'
   };
 };
 
 const fallbackDomainCheck = async (domain) => {
-  const [mxResult, nsResult] = await Promise.allSettled([
-    dns.resolveMx(domain),
-    dns.resolveNs(domain)
-  ]);
+  const [mxResult, nsResult] = await Promise.allSettled([dns.resolveMx(domain), dns.resolveNs(domain)]);
 
   const mx = mxResult.status === 'fulfilled' ? mxResult.value : [];
   const ns = nsResult.status === 'fulfilled' ? nsResult.value : [];
-  const resolutionError =
-    mxResult.status === 'rejected' || nsResult.status === 'rejected';
+  const resolutionError = mxResult.status === 'rejected' || nsResult.status === 'rejected';
 
   let smtpReachable = false;
   if (mx.length > 0) {
@@ -88,10 +73,11 @@ const fallbackDomainCheck = async (domain) => {
     source: 'fallback-dns',
     critical,
     summary: resolutionError
-      ? 'DNS fallback could not fully resolve records in this runtime'
+      ? 'DNS fallback partially unavailable in runtime'
       : critical
       ? 'Missing MX or NS records'
-      : 'DNS records are present',
+      : 'Clean',
+    statusCode: critical ? 'BLACKLISTED' : 'CLEAN',
     dns: {
       mx,
       ns,
@@ -111,14 +97,14 @@ const fallbackIpCheck = async (ip) => {
     (value) => ({ value, error: null }),
     (error) => ({ value: [], error: error.message })
   );
+
+  const hasPtr = reverseResult.value.length > 0;
+
   return {
     source: 'fallback-dns',
     critical: false,
-    summary: reverseResult.value.length
-      ? 'PTR record found'
-      : reverseResult.error
-      ? 'PTR lookup unavailable in this runtime'
-      : 'No PTR record found',
+    summary: hasPtr ? 'Clean' : reverseResult.error ? 'PTR lookup unavailable in runtime' : 'No PTR record found',
+    statusCode: hasPtr ? 'CLEAN' : 'UNKNOWN',
     dns: {
       reverse: reverseResult.value,
       resolutionError: reverseResult.error
@@ -126,67 +112,85 @@ const fallbackIpCheck = async (ip) => {
   };
 };
 
-const sendAlert = async (alerts) => {
-  if (alerts.length === 0) return;
+const readCache = async () => {
+  try {
+    const raw = await fs.readFile(cachePath, 'utf8');
+    const parsed = JSON.parse(raw);
+    return parsed?.entries || {};
+  } catch {
+    return {};
+  }
+};
 
-  console.error(`ALERT: ${alerts.length} critical domain health finding(s)`);
-  console.error(JSON.stringify(alerts, null, 2));
-
-  if (!process.env.ALERT_WEBHOOK_URL) return;
-
-  await fetch(process.env.ALERT_WEBHOOK_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      text: 'Domain health monitor detected critical findings',
-      alerts
-    })
-  }).catch(() => {});
+const writeCache = async (entries) => {
+  await fs.mkdir(path.dirname(cachePath), { recursive: true });
+  await fs.writeFile(
+    cachePath,
+    JSON.stringify({ updatedAt: new Date().toISOString(), entries }, null, 2),
+    'utf8'
+  );
 };
 
 const run = async () => {
-  const targets = await getTargets();
+  const { environment, targets } = await getSelectedTargets();
+  const targetChecks = flattenMxTargets(targets);
   const checks = [];
 
-  for (const domain of targets.domains) {
+  for (const item of targetChecks) {
     try {
       const check = process.env.MXTOOLBOX_API_KEY
-        ? await callMxToolbox(domain)
-        : await fallbackDomainCheck(domain);
-      checks.push({ target: domain, type: 'domain', ...check });
+        ? await callMxToolbox(item.target)
+        : item.type === 'domain'
+        ? await fallbackDomainCheck(item.target)
+        : await fallbackIpCheck(item.target);
+      checks.push({ ...item, ...check });
     } catch (error) {
-      const fallback = await fallbackDomainCheck(domain).catch(() => ({
-        source: 'fallback-dns',
-        critical: true,
-        summary: 'Fallback DNS check failed',
-        error: error.message
-      }));
-      checks.push({ target: domain, type: 'domain', ...fallback });
+      const fallback = item.type === 'domain' ? await fallbackDomainCheck(item.target) : await fallbackIpCheck(item.target);
+      checks.push({ ...item, ...fallback, error: error.message });
     }
   }
 
-  for (const ip of targets.ips) {
-    try {
-      const check = process.env.MXTOOLBOX_API_KEY
-        ? await callMxToolbox(ip)
-        : await fallbackIpCheck(ip);
-      checks.push({ target: ip, type: 'ip', ...check });
-    } catch (error) {
-      const fallback = await fallbackIpCheck(ip).catch(() => ({
-        source: 'fallback-dns',
-        critical: true,
-        summary: 'Fallback IP check failed',
-        error: error.message
-      }));
-      checks.push({ target: ip, type: 'ip', ...fallback });
+  const previous = await readCache();
+  const current = {};
+  const deltas = [];
+
+  for (const check of checks) {
+    const key = `${check.type}:${check.target}`;
+    const snapshot = {
+      statusCode: check.statusCode,
+      summary: check.summary,
+      critical: check.critical,
+      sourceTarget: check.sourceTarget
+    };
+
+    current[key] = snapshot;
+
+    const prev = previous[key];
+    if (!prev) continue;
+
+    if (prev.statusCode !== snapshot.statusCode || prev.summary !== snapshot.summary) {
+      deltas.push({
+        key,
+        target: check.target,
+        type: check.type,
+        sourceTarget: check.sourceTarget,
+        previous: prev,
+        current: snapshot,
+        changedAt: new Date().toISOString()
+      });
     }
   }
 
-  const alerts = checks.filter((item) => item.critical);
+  await writeCache(current);
+
+  const alerts = deltas.filter((delta) => delta.current.critical || delta.previous.critical);
+
   const report = {
     generatedAt: new Date().toISOString(),
+    environment,
     usedMxToolboxApi: Boolean(process.env.MXTOOLBOX_API_KEY),
     checks,
+    deltas,
     alerts,
     status: alerts.length > 0 ? 'failed' : 'passed'
   };
@@ -194,7 +198,15 @@ const run = async () => {
   await fs.mkdir(path.dirname(reportPath), { recursive: true });
   await fs.writeFile(reportPath, JSON.stringify(report, null, 2), 'utf8');
 
-  await sendAlert(alerts);
+  for (const alert of alerts) {
+    await sendNotification({
+      title: 'Domain/IP Health Delta Detected',
+      environment,
+      targetName: alert.sourceTarget,
+      details: `${alert.target} changed from ${alert.previous.statusCode} to ${alert.current.statusCode} (${alert.current.summary})`,
+      timestamp: alert.changedAt
+    }).catch(() => {});
+  }
 
   if (report.status === 'failed') {
     process.exitCode = 1;
