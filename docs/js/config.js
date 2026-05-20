@@ -1,8 +1,10 @@
-/** API base URL — local dev API or mock-only on static GitHub Pages */
+/** API base URL — local dev API only (never available on GitHub Pages) */
 export const API_BASE =
   (typeof window !== 'undefined' && window.QA_API_BASE) ||
   localStorage.getItem('qa-api-base') ||
-  'http://127.0.0.1:3847';
+  (typeof window !== 'undefined' && window.location.hostname.endsWith('github.io')
+    ? ''
+    : 'http://127.0.0.1:3847');
 
 export const setApiBase = (url) => {
   localStorage.setItem('qa-api-base', url);

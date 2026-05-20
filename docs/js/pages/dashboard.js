@@ -60,7 +60,7 @@ export const renderDashboard = (apiHealth) => {
           <li>Twilio: <strong>${twilio?.twilioConfigured ? 'Configured' : 'Mock mode'}</strong></li>
           <li>MXToolbox: <strong>${apiHealth?.services?.mxtoolbox ? 'Configured' : 'DNS fallback'}</strong></li>
         </ul>
-        <p class="hint">Start <code>npm run dev:api</code> for live checks. Keys stay in <code>.env</code> only.</p>
+        <p class="hint">Locally run <code>npm run dev</code> for live checks. On GitHub Pages, mock/DNS mode is used automatically.</p>
       </article>
     </div>
 
