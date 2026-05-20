@@ -10,15 +10,58 @@ Daily automation toolkit for marketing and IT checks:
 
 Public docs: https://philr029.github.io/site-test-phone-test-and-domain-checks/
 
+## Interactive QA dashboard
+
+The `docs/` folder is now a tabbed testing dashboard (Dashboard, Site Tests, Phone Tests, Domain & IP, Spreadsheet Upload, Reports, Settings).
+
+**Local development (live checks via API; keys stay in `.env`):**
+
+**One command (easiest):**
+
+```bash
+npm run dev
+```
+
+Then open http://127.0.0.1:8080/ in your browser (Chrome or Safari). Keep the terminal open.
+
+**Or two terminals:**
+
+```bash
+npm run dev:api
+```
+
+```bash
+npm run dev:dashboard
+```
+
+If port 3847 is already in use:
+
+```bash
+lsof -i :3847
+kill <PID>
+```
+
+Or use another port: `DASHBOARD_API_PORT=3848 npm run dev:api` (then set the same URL in Dashboard Settings).
+
+On GitHub Pages, the UI runs in **mock / browser DNS mode** when the local API is not reachable. Full Playwright and Twilio automation still use the CLI scripts below.
+
+```bash
+npm run build            # Verify dashboard assets
+```
+
 ## Directory structure
 
 ```text
 .
 ├── config/targets.json          # Beginner-friendly target config
 ├── docs/
-│   ├── index.html               # GitHub Pages landing page
+│   ├── index.html               # QA testing dashboard (GitHub Pages)
 │   ├── styles.css               # Dashboard styles (light/dark)
-│   └── script.js                # Theme toggle & interactions
+│   ├── js/                      # Modular dashboard app
+│   └── samples/                 # Sample CSV for upload tests
+├── src/api/                     # Local API (secrets in .env only)
+├── src/lib/                     # Shared check logic for API
+├── samples/                     # Sample spreadsheet data
 ├── reports/                     # Generated reports (gitignored)
 ├── src/
 │   ├── phone-test.js            # Outbound phone line checks

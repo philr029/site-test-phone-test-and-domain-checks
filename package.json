@@ -9,8 +9,13 @@
     "test:twilio": "node src/twilio-verification-test.js",
     "test:domain": "node src/domain-health-check.js",
     "test:e2e": "node src/run-all.js",
+    "test": "npm run test:form-popup",
     "report": "node src/generate-report.js",
-    "clean:reports": "node src/clean-reports.js"
+    "clean:reports": "node src/clean-reports.js",
+    "build": "node scripts/build-dashboard.js",
+    "dev": "node scripts/dev-all.js",
+    "dev:api": "node src/api/server.js",
+    "dev:dashboard": "node src/api/static-server.js"
   },
   "dependencies": {
     "@faker-js/faker": "^9.0.3",
