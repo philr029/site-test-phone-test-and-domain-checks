@@ -1,0 +1,5 @@
+company,domain,ip,website,notes
+Acme Corp,example.com,93.184.216.34,https://example.com,Sample row for dashboard testing
+Test UK Ltd,google.com,,https://www.google.com,DNS-only check
+Internal IP,,8.8.8.8,,IP reputation placeholder
+Bad Row,,,not-a-valid-url,Should flag validation warning
