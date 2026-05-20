@@ -1,0 +1,18 @@
+{
+  "name": "site-test-phone-test-and-domain-checks",
+  "version": "1.0.0",
+  "description": "Automated web form/pop-up testing, Twilio verification checks, and domain health monitoring.",
+  "type": "module",
+  "scripts": {
+    "test:form-popup": "node src/form-popup-test.js",
+    "test:twilio": "node src/twilio-verification-test.js",
+    "test:domain": "node src/domain-health-check.js",
+    "test:e2e": "node src/run-all.js"
+  },
+  "dependencies": {
+    "@faker-js/faker": "^9.0.3",
+    "dotenv": "^16.4.5",
+    "playwright": "^1.54.2",
+    "twilio": "^5.3.4"
+  }
+}

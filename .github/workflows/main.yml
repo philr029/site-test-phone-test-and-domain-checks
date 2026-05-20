@@ -1,0 +1,60 @@
+name: main
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+jobs:
+  e2e-domain-monitoring:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      TEST_TARGET_URL: ${{ secrets.TEST_TARGET_URL }}
+      FORM_SELECTOR: ${{ secrets.FORM_SELECTOR }}
+      FORM_SUCCESS_SELECTOR: ${{ secrets.FORM_SUCCESS_SELECTOR }}
+      FORM_SUCCESS_URL_CONTAINS: ${{ secrets.FORM_SUCCESS_URL_CONTAINS }}
+      FORM_SUBMIT_SELECTOR: ${{ secrets.FORM_SUBMIT_SELECTOR }}
+      POPUP_CLOSE_SELECTORS: ${{ secrets.POPUP_CLOSE_SELECTORS }}
+      TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
+      TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
+      TWILIO_FROM_NUMBER: ${{ secrets.TWILIO_FROM_NUMBER }}
+      TWILIO_TO_NUMBER: ${{ secrets.TWILIO_TO_NUMBER }}
+      TWILIO_TEST_MODE: ${{ secrets.TWILIO_TEST_MODE }}
+      TWILIO_OTP_REGEX: ${{ secrets.TWILIO_OTP_REGEX }}
+      TWILIO_EXPECTED_FROM: ${{ secrets.TWILIO_EXPECTED_FROM }}
+      OTP_PAGE_URL: ${{ secrets.OTP_PAGE_URL }}
+      OTP_FIELD_SELECTOR: ${{ secrets.OTP_FIELD_SELECTOR }}
+      OTP_SUBMIT_SELECTOR: ${{ secrets.OTP_SUBMIT_SELECTOR }}
+      MXTOOLBOX_API_KEY: ${{ secrets.MXTOOLBOX_API_KEY }}
+      DOMAIN_TARGETS: ${{ secrets.DOMAIN_TARGETS }}
+      IP_TARGETS: ${{ secrets.IP_TARGETS }}
+      ALERT_WEBHOOK_URL: ${{ secrets.ALERT_WEBHOOK_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Run form + Twilio + domain checks
+        run: npm run test:e2e
+
+      - name: Upload reports and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-monitoring-artifacts
+          path: |
+            reports/*.json
+            artifacts/screenshots/*.png
+          if-no-files-found: warn
