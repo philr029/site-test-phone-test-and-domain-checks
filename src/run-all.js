@@ -8,7 +8,7 @@ const commands = [
 
 const runCommand = ([cmd, args]) =>
   new Promise((resolve) => {
-    const child = spawn(cmd, args, { stdio: 'inherit', shell: true });
+    const child = spawn(cmd, args, { stdio: 'inherit' });
     child.on('close', (code) => resolve(code ?? 1));
   });
 

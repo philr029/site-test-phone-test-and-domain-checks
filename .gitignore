@@ -3,4 +3,7 @@ node_modules/
 playwright-report/
 test-results/
 reports/*.json
+reports/playwright-html/
 artifacts/screenshots/*.png
+artifacts/network/*.json
+data/health_cache.json

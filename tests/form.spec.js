@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { test, expect } from '@playwright/test';
+import { test, expect } from 'playwright/test';
 import { getSelectedTargets } from '../src/config/target-loader.js';
 import { FormPage } from '../src/pages/FormPage.js';
 import { PopupHandler } from '../src/pages/PopupHandler.js';
@@ -11,6 +11,14 @@ const reportPath = path.join(repoRoot, 'reports', 'form-popup-report.json');
 const networkArtifactDir = path.join(repoRoot, 'artifacts', 'network');
 
 const { environment, defaults, targets } = await getSelectedTargets();
+const isPlaceholderTarget = (url) => {
+  try {
+    const hostname = new URL(url).hostname.toLowerCase();
+    return hostname === 'example.com' || hostname.endsWith('.example.com');
+  } catch {
+    return false;
+  }
+};
 
 const writeAggregateReport = async (entry) => {
   await fs.mkdir(path.dirname(reportPath), { recursive: true });
@@ -31,7 +39,7 @@ const writeAggregateReport = async (entry) => {
 for (const target of targets) {
   test(`form automation for ${target.name}`, async ({ page }, testInfo) => {
     test.skip(
-      target.url?.includes('example.com') && process.env.ALLOW_PLACEHOLDER_TARGETS !== 'true',
+      isPlaceholderTarget(target.url) && process.env.ALLOW_PLACEHOLDER_TARGETS !== 'true',
       `Target ${target.name} uses placeholder URL. Set ALLOW_PLACEHOLDER_TARGETS=true to force execution.`
     );
 

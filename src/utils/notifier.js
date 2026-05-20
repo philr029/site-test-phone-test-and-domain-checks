@@ -1,10 +1,25 @@
 const detectProvider = (webhookUrl = '') => {
+  let hostname = '';
+  try {
+    hostname = new URL(webhookUrl).hostname.toLowerCase();
+  } catch {
+    hostname = '';
+  }
+
   const provider = process.env.NOTIFIER_PROVIDER?.toLowerCase();
   if (provider) return provider;
 
-  if (webhookUrl.includes('discord.com')) return 'discord';
-  if (webhookUrl.includes('slack.com')) return 'slack';
-  if (webhookUrl.includes('office.com') || webhookUrl.includes('office365.com')) return 'teams';
+  if (hostname === 'discord.com' || hostname.endsWith('.discord.com')) return 'discord';
+  if (hostname === 'slack.com' || hostname.endsWith('.slack.com')) return 'slack';
+  if (
+    hostname === 'office.com' ||
+    hostname.endsWith('.office.com') ||
+    hostname === 'office365.com' ||
+    hostname.endsWith('.office365.com')
+  ) {
+    return 'teams';
+  }
+
   return 'generic';
 };
 
