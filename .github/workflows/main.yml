@@ -21,7 +21,7 @@ jobs:
       - name: Build target matrix
         id: matrix
         run: |
-          node -e "const fs=require('fs');const data=JSON.parse(fs.readFileSync('config/targets.json','utf8'));const targets=(data.targets||[]).map(t=>({target:t.name}));const out='form_matrix='+JSON.stringify(targets.length?targets:[{target:'default'}])+'\n'+'domain_matrix='+JSON.stringify(targets.length?targets:[{target:'default'}])+'\n';fs.appendFileSync(process.env.GITHUB_OUTPUT,out);"
+          node -e "const fs=require('fs');const data=JSON.parse(fs.readFileSync('config/targets.json','utf8'));const targets=(data.targets||[]).filter(t=>t.enabled!==false).map(t=>({target:t.name}));const out='form_matrix='+JSON.stringify(targets.length?targets:[{target:'default'}])+'\n'+'domain_matrix='+JSON.stringify(targets.length?targets:[{target:'default'}])+'\n';fs.appendFileSync(process.env.GITHUB_OUTPUT,out);"
 
   web-form-tests:
     needs: prepare-matrix
@@ -51,7 +51,7 @@ jobs:
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
 
-      - name: Run web form tests
+      - name: Run web form and popup tests
         run: npm run test:form-popup
 
       - name: Upload playwright reports and failure artifacts
@@ -65,6 +65,39 @@ jobs:
             reports/form-popup-report.json
             artifacts/network
             test-results
+          if-no-files-found: warn
+
+  phone-line-tests:
+    runs-on: ubuntu-latest
+    env:
+      TEST_ENVIRONMENT: ${{ vars.TEST_ENVIRONMENT || 'production' }}
+      TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
+      TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
+      TWILIO_FROM_NUMBER: ${{ secrets.TWILIO_FROM_NUMBER }}
+      TWILIO_TEST_CALL_TWIML_URL: ${{ secrets.TWILIO_TEST_CALL_TWIML_URL }}
+      TWILIO_CALL_TIMEOUT_SEC: ${{ secrets.TWILIO_CALL_TIMEOUT_SEC }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run phone line tests
+        run: npm run test:phone
+
+      - name: Upload phone report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phone-artifacts
+          path: reports/phone-report.json
           if-no-files-found: warn
 
   domain-health-checks:
@@ -139,7 +172,7 @@ jobs:
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
 
-      - name: Run Twilio checks
+      - name: Run Twilio OTP verification checks
         run: npm run test:twilio
 
       - name: Upload Twilio report
@@ -148,4 +181,38 @@ jobs:
         with:
           name: twilio-artifacts
           path: reports/twilio-report.json
+          if-no-files-found: warn
+
+  build-summary-report:
+    needs: [web-form-tests, phone-line-tests, domain-health-checks]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download workflow artifacts
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+
+      - name: Generate summary report
+        run: npm run report
+
+      - name: Upload run report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: run-report
+          path: |
+            reports/run-report.json
+            reports/run-report.html
           if-no-files-found: warn
