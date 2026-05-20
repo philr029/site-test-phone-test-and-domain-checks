@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Marketing + IT Automation Toolkit</title>
+  <meta name="description" content="Daily automation for phone line checks, website forms, marketing popups, and domain/email health monitoring." />
+  <style>
+    :root {
+      --bg: #070d19;
+      --surface: #101a2e;
+      --surface-2: #16233d;
+      --text: #edf3ff;
+      --muted: #9eb0d3;
+      --accent: #5b8cff;
+      --accent-2: #35d0ba;
+      --warn: #f0b429;
+      --danger: #ff6b6b;
+      --border: #2a3d66;
+      --shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(900px 500px at 90% -10%, rgba(91, 140, 255, 0.25), transparent 60%),
+        radial-gradient(700px 400px at 0% 0%, rgba(53, 208, 186, 0.18), transparent 55%),
+        var(--bg);
+      line-height: 1.6;
+    }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .container { width: min(1100px, 92%); margin: 0 auto; }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      backdrop-filter: blur(10px);
+      background: rgba(7, 13, 25, 0.8);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.9rem 0;
+    }
+
+    .brand { font-weight: 700; letter-spacing: 0.2px; }
+    .nav-links { display: flex; flex-wrap: wrap; gap: 0.8rem; font-size: 0.92rem; }
+
+    .hero {
+      padding: 3.5rem 0 2rem;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 1.2rem;
+      align-items: stretch;
+    }
+
+    @media (max-width: 860px) {
+      .hero-grid { grid-template-columns: 1fr; }
+    }
+
+    .panel {
+      background: linear-gradient(160deg, var(--surface), var(--surface-2));
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 1.4rem;
+      box-shadow: var(--shadow);
+    }
+
+    h1 { margin: 0 0 0.6rem; font-size: clamp(1.8rem, 4vw, 2.6rem); line-height: 1.15; }
+    h2 { margin-top: 0; font-size: 1.35rem; }
+    h3 { margin: 0 0 0.4rem; font-size: 1.05rem; }
+    p { color: var(--muted); }
+
+    .badge-row { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1rem 0; }
+    .badge {
+      border: 1px solid var(--border);
+      background: rgba(91, 140, 255, 0.12);
+      color: #d9e6ff;
+      border-radius: 999px;
+      padding: 0.25rem 0.7rem;
+      font-size: 0.82rem;
+    }
+
+    .cta-row { display: flex; flex-wrap: wrap; gap: 0.7rem; margin-top: 1rem; }
+    .btn {
+      display: inline-block;
+      border-radius: 10px;
+      padding: 0.62rem 0.95rem;
+      font-weight: 600;
+      border: 1px solid transparent;
+    }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-secondary { border-color: var(--border); color: var(--text); background: #0d1528; }
+
+    section { padding: 1.2rem 0 2rem; }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1rem;
+    }
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1rem;
+    }
+
+    @media (max-width: 900px) {
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    }
+
+    .card h3 { color: #fff; }
+    .status {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      border-radius: 999px;
+      padding: 0.15rem 0.55rem;
+      margin-bottom: 0.5rem;
+    }
+    .ready { background: rgba(53, 208, 186, 0.2); color: #9ef5e8; }
+    .partial { background: rgba(240, 180, 41, 0.2); color: #ffe6a8; }
+    .soon { background: rgba(107, 122, 153, 0.25); color: #d5def5; }
+
+    pre {
+      background: #0a1224;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.9rem;
+      overflow-x: auto;
+      color: #d3e2ff;
+      font-size: 0.86rem;
+    }
+
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+    ol li, ul li { color: var(--muted); margin-bottom: 0.35rem; }
+
+    footer {
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      padding: 1.5rem 0 2.5rem;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container nav">
+      <div class="brand">Marketing + IT Automation Toolkit</div>
+      <nav class="nav-links">
+        <a href="#phone">Phone</a>
+        <a href="#forms">Forms</a>
+        <a href="#popups">Popups</a>
+        <a href="#domain">Domain</a>
+        <a href="#reports">Reports</a>
+        <a href="#setup">Setup</a>
+        <a href="#coming-soon">Roadmap</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <div class="hero-grid">
+        <div class="panel">
+          <h1>Daily checks for marketing sites, phone lines, and email infrastructure</h1>
+          <p>
+            Run repeatable QA and IT health checks from one config file. Get JSON and HTML reports
+            you can review locally or share with your team.
+          </p>
+          <div class="badge-row">
+            <span class="badge">Twilio phone tests</span>
+            <span class="badge">Playwright form checks</span>
+            <span class="badge">Popup & live chat checks</span>
+            <span class="badge">MXToolbox + DNS fallback</span>
+            <span class="badge">GitHub Actions ready</span>
+          </div>
+          <div class="cta-row">
+            <a class="btn btn-primary" href="https://github.com/philr029/site-test-phone-test-and-domain-checks" target="_blank" rel="noopener">View repository</a>
+            <a class="btn btn-secondary" href="#setup">Setup guide</a>
+          </div>
+        </div>
+        <div class="panel">
+          <h2>Quick commands</h2>
+          <pre><code>npm install
+npx playwright install chromium
+npm run test:e2e
+npm run report</code></pre>
+          <p>Outputs: <code>reports/run-report.json</code> and <code>reports/run-report.html</code></p>
+        </div>
+      </div>
+    </section>
+
+    <section id="phone">
+      <h2>Phone test automation</h2>
+      <div class="grid-2">
+        <article class="panel card">
+          <span class="status ready">Ready</span>
+          <h3>Outbound line checks via Twilio</h3>
+          <p>Tests company numbers from <code>config/targets.json</code> and records honest statuses such as call started, answered, busy, no answer, failed, or skipped when keys are missing.</p>
+        </article>
+        <article class="panel card">
+          <span class="status partial">Expandable</span>
+          <h3>Answer detection limitations</h3>
+          <p>Current version polls Twilio call status. For deeper IVR/answer analytics, add a Twilio status callback URL in environment variables.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="forms">
+      <h2>Website form testing</h2>
+      <div class="panel card">
+        <span class="status ready">Ready</span>
+        <h3>Safe-by-default form automation</h3>
+        <ul>
+          <li>Opens each target URL and verifies the form is visible.</li>
+          <li>Fills fields with test data (configured fields or auto-detected inputs).</li>
+          <li>Only submits when <code>safeToSubmit: true</code>.</li>
+          <li>Checks success selectors, URL tokens, and expected confirmation text.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="popups">
+      <h2>Popup, banner, and live chat checks</h2>
+      <div class="grid-3">
+        <article class="panel card">
+          <h3>Popups & cookie banners</h3>
+          <p>Selector-based visibility checks with optional expected text and criticality flags.</p>
+        </article>
+        <article class="panel card">
+          <h3>Newsletter & CTA blocks</h3>
+          <p>Validate key conversion elements are present before campaigns go live.</p>
+        </article>
+        <article class="panel card">
+          <h3>Live chat widgets</h3>
+          <p>Mark chat as critical to fail fast when customer support entry points disappear.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="domain">
+      <h2>Domain and IP health checks</h2>
+      <div class="grid-2">
+        <article class="panel card">
+          <span class="status ready">Ready</span>
+          <h3>MXToolbox when API key exists</h3>
+          <p>Runs MX, SPF, DMARC, and blacklist lookups per target domain/IP.</p>
+        </article>
+        <article class="panel card">
+          <span class="status ready">Fallback</span>
+          <h3>DNS checks without API key</h3>
+          <p>If <code>MXTOOLBOX_API_KEY</code> is missing, the tool clearly skips API checks and uses DNS fallback for MX/SPF/DMARC, resolution, and reverse lookup.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="reports">
+      <h2>Reports</h2>
+      <div class="panel card">
+        <p>Every full run produces:</p>
+        <ul>
+          <li><strong>JSON:</strong> machine-readable run summary for dashboards or CI artifacts.</li>
+          <li><strong>HTML:</strong> manager-friendly report highlighting failures, warnings, and next actions.</li>
+        </ul>
+        <p>Category reports are also saved separately (phone, form/popup, domain).</p>
+      </div>
+    </section>
+
+    <section id="setup">
+      <h2>Setup guide</h2>
+      <div class="panel card">
+        <ol>
+          <li>Clone the repository and run <code>npm install</code>.</li>
+          <li>Copy <code>.env.example</code> to <code>.env</code> (never commit real keys).</li>
+          <li>Edit <code>config/targets.json</code> with your websites, phone numbers, and domains.</li>
+          <li>Install Playwright browser: <code>npx playwright install chromium</code>.</li>
+          <li>Run checks: <code>npm run test:e2e</code> then open <code>reports/run-report.html</code>.</li>
+          <li>Enable GitHub Actions secrets for Twilio and MXToolbox in repository settings.</li>
+          <li>Publish this page from the <code>/docs</code> folder via GitHub Pages.</li>
+        </ol>
+        <pre><code># config/targets.json (simplified)
+{
+  "targets": [{
+    "name": "Main Website",
+    "enabled": true,
+    "website": { "url": "https://yoursite.com", "safeToSubmit": false },
+    "phone": { "enabled": true, "number": "+441234567890" },
+    "domain": { "enabled": true, "domain": "yoursite.com", "ip": "203.0.113.10" }
+  }]
+}</code></pre>
+      </div>
+    </section>
+
+    <section id="coming-soon">
+      <h2>Coming soon</h2>
+      <div class="grid-3">
+        <article class="panel card"><span class="status soon">Planned</span><h3>Scheduled manager digest email</h3><p>Daily/weekly HTML report delivery.</p></article>
+        <article class="panel card"><span class="status soon">Planned</span><h3>Dashboard trend charts</h3><p>Historical pass/fail trends per target.</p></article>
+        <article class="panel card"><span class="status soon">Planned</span><h3>Selector-based DKIM checks</h3><p>Per-selector DKIM validation once selectors are configured.</p></article>
+      </div>
+    </section>
+  </main>
+
+  <footer class="container">
+    <p>Built for practical daily marketing and IT operations checks. Missing API keys are reported as <strong>skipped</strong>, not fake passes.</p>
+  </footer>
+</body>
+</html>

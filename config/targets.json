@@ -13,29 +13,41 @@
   "targets": [
     {
       "name": "example-site",
-      "url": "https://example.com",
-      "form": {
-        "selector": "form",
+      "enabled": true,
+      "website": {
+        "url": "https://example.com",
+        "formUrl": "https://example.com",
+        "safeToSubmit": false,
+        "formSelector": "form",
         "submitSelector": "button[type='submit']",
         "successSelector": "",
-        "successUrlContains": ""
+        "successUrlContains": "",
+        "expectedSuccessText": "Thank you",
+        "fields": [],
+        "popupChecks": [
+          {
+            "name": "Cookie Banner",
+            "selector": "#cookie-banner",
+            "expectedText": "",
+            "critical": false
+          },
+          {
+            "name": "Live Chat",
+            "selector": ".live-chat-widget",
+            "expectedText": "",
+            "critical": true
+          }
+        ]
       },
-      "popup": {
+      "phone": {
+        "enabled": false,
+        "number": "+441234567890",
+        "expectedBehaviour": "should ring"
+      },
+      "domain": {
         "enabled": true,
-        "closeSelectors": [
-          "button[aria-label*='close' i]",
-          "button:has-text('Close')",
-          "button:has-text('No thanks')",
-          "button:has-text('Accept')"
-        ]
-      },
-      "mxtoolbox": {
-        "domains": [
-          "example.com"
-        ],
-        "ips": [
-          "8.8.8.8"
-        ]
+        "domain": "example.com",
+        "ip": "8.8.8.8"
       }
     }
   ]

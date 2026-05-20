@@ -1,118 +1,108 @@
 # site-test-phone-test-and-domain-checks
 
-Enterprise-ready QA automation for:
-- Playwright web form + popup validation (POM architecture)
-- Twilio SMS verification with exponential backoff polling
-- MXToolbox domain/IP monitoring with delta-only alerting
+Daily automation toolkit for marketing and IT checks:
 
-## Refactored directory tree
+- Phone line tests (Twilio outbound, honest status reporting)
+- Website form tests (Playwright, safe submit guard)
+- Popup/banner/live chat feature checks
+- Domain/IP/email health checks (MXToolbox API + DNS fallback)
+- JSON + HTML reports for local review or sharing
+
+Public docs: https://philr029.github.io/site-test-phone-test-and-domain-checks/
+
+## Directory structure
 
 ```text
 .
-├── .env.example
-├── .github/
-│   └── workflows/
-│       └── main.yml
-├── artifacts/
-│   ├── network/
-│   └── screenshots/
-├── config/
-│   └── targets.json
-├── data/
-│   └── health_cache.json
-├── reports/
+├── config/targets.json          # Beginner-friendly target config
+├── docs/index.html              # GitHub Pages landing page
+├── reports/                     # Generated reports (gitignored)
 ├── src/
-│   ├── config/
-│   │   └── target-loader.js
-│   ├── pages/
-│   │   ├── FormPage.js
-│   │   └── PopupHandler.js
-│   ├── utils/
-│   │   └── notifier.js
-│   ├── domain-health-check.js
-│   ├── run-all.js
-│   └── twilio-verification-test.js
-├── tests/
-│   └── form.spec.js
-├── package.json
-└── playwright.config.js
+│   ├── phone-test.js            # Outbound phone line checks
+│   ├── domain-health-check.js   # MXToolbox + DNS fallback
+│   ├── generate-report.js       # Build combined report
+│   ├── run-all.js               # Run all core checks + report
+│   ├── reporting/               # Report builder + HTML template
+│   └── pages/                   # Playwright page objects
+└── tests/form.spec.js           # Form + popup/feature checks
 ```
 
-## Multi-target configuration (`config/targets.json`)
+## Config (`config/targets.json`)
 
-Each target defines website behavior and MXToolbox domain/IP checks:
-- `name`, `url`
-- `form.selector`, `form.submitSelector`, `form.successSelector`, `form.successUrlContains`
-- `popup.enabled`, `popup.closeSelectors`
-- `mxtoolbox.domains[]`, `mxtoolbox.ips[]`
+Each target supports:
 
-Use `TARGET_NAME=<name>` to isolate a single target for execution.
+- `website.url`, `website.formUrl`, `website.safeToSubmit`
+- `website.formSelector`, `website.expectedSuccessText`
+- `website.popupChecks[]` with `name`, `selector`, `expectedText`, `critical`
+- `phone.enabled`, `phone.number`, `phone.expectedBehaviour`
+- `domain.enabled`, `domain.domain`, `domain.ip`
 
-## Playwright failure artifacts and debug controls
+Set `enabled: false` on a target to skip it.
 
-`playwright.config.js` now retains only failure artifacts:
-- `screenshot: only-on-failure`
-- `video: retain-on-failure`
-- `trace: retain-on-failure`
-- HTML and JSON reporters
+## NPM scripts
 
-`tests/form.spec.js` also captures and stores:
-- failed network requests / >=400 responses
-- console errors
-- popup dismiss events
+```bash
+npm run test:e2e          # form/popup + phone + domain + combined report
+npm run test:form-popup   # Playwright website checks
+npm run test:phone        # Twilio outbound phone checks
+npm run test:domain       # Domain/IP/email health checks
+npm run test:twilio       # Optional SMS/OTP verification flow
+npm run report            # Build reports from existing JSON outputs
+npm run clean:reports     # Remove generated report files
+```
 
-## Twilio robust polling
+## Environment variables
 
-`src/twilio-verification-test.js` includes:
-- max timeout-based polling (`TWILIO_OTP_TIMEOUT_MS`, default 60000)
-- exponential backoff between Twilio API polls
-- regex token extraction with capture-group support
-- graceful abort/cleanup of polling wait handlers
+Copy `.env.example` to `.env` and fill in only what you need.
 
-## MXToolbox delta reporting
+| Variable | Required for | If missing |
+|---|---|---|
+| `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER` | Phone tests | Phone checks are **skipped** |
+| `MXTOOLBOX_API_KEY` | API reputation lookups | DNS fallback checks run instead |
+| `NOTIFIER_WEBHOOK_URL` | Alerts | Notifications are skipped |
 
-`src/domain-health-check.js` now uses cache state in `data/health_cache.json`:
-- full checks are always logged into `reports/domain-health-report.json`
-- notifications are only sent for state changes (delta-based)
-- critical change logic prevents repeated alert spam when status is unchanged
+## Safety rules
 
-## Notification utility
+- Real API keys must stay in `.env` (gitignored), never committed.
+- Missing API keys return **skipped**, not fake passes.
+- Forms are not submitted unless `safeToSubmit: true`.
+- Phone answer detection uses Twilio status polling only (no fake "answered").
 
-`src/utils/notifier.js` supports Slack/Discord/Teams webhook payloads and includes:
-- Environment/Target name
-- Failure details
-- Execution timestamp
-- GitHub Actions run URL (when available)
-
-## Local execution guide
-
-Install dependencies:
+## Local quick start
 
 ```bash
 npm install
 npx playwright install chromium
-```
-
-Run all modules:
-
-```bash
+cp .env.example .env
 npm run test:e2e
+open reports/run-report.html
 ```
 
-Run only a specific form target:
+For placeholder `example.com` targets, either replace URLs in config or run with:
 
 ```bash
-TARGET_NAME=example-site npm run test:form-popup
+ALLOW_PLACEHOLDER_TARGETS=true npm run test:form-popup
 ```
 
-Run only domain checks for one target:
+## GitHub Pages
 
-```bash
-TARGET_NAME=example-site npm run test:domain
-```
+1. Push this repository to GitHub.
+2. In repository settings → Pages, set source to **Deploy from branch**.
+3. Branch: `main`, folder: `/docs`.
+4. Your site will publish `docs/index.html`.
 
-Run only Twilio checks:
+## GitHub Actions
 
-```bash
-npm run test:twilio
-```
+Workflow: `.github/workflows/main.yml`
+
+Add repository secrets:
+
+- `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER`
+- `MXTOOLBOX_API_KEY` (optional)
+- `NOTIFIER_WEBHOOK_URL` (optional)
+
+## What is not fully automated yet
+
+- Deep phone IVR/answer analytics (add Twilio status callback URL).
+- DKIM validation without a known selector (`domain.dkimSelector` planned).
+- Real form submission on production sites unless you explicitly set `safeToSubmit: true`.
