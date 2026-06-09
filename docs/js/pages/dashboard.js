@@ -1,10 +1,12 @@
-import { getTodayStats, getHistory } from '../storage.js';
+import { getTodayStats, getHistory, getSettings } from '../storage.js';
 import { PAGES, navigateTo } from '../components/nav.js';
 
 export const renderDashboard = (apiHealth) => {
   const stats = getTodayStats();
   const history = getHistory().slice(0, 5);
   const twilio = apiHealth?.services?.twilio;
+  const showHints = getSettings().showSetupHints !== false;
+  const onPages = typeof window !== 'undefined' && window.location.hostname.endsWith('github.io');
 
   return `
     <section class="page-header">
@@ -18,6 +20,15 @@ export const renderDashboard = (apiHealth) => {
         <button type="button" class="btn btn-secondary" data-goto="spreadsheet">Upload spreadsheet</button>
       </div>
     </section>
+
+    ${
+      showHints && !apiHealth
+        ? `<div class="settings-banner settings-banner-info">
+            <strong>Mock mode active.</strong> Run <code>npm run dev</code> locally and set your API URL in <a href="#settings">Settings</a> for live Twilio and Playwright checks.
+            ${onPages ? ' GitHub Pages always uses browser fallbacks.' : ''}
+          </div>`
+        : ''
+    }
 
     <div class="stats-grid">
       <article class="stat-card">

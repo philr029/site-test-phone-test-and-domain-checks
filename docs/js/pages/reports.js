@@ -1,4 +1,4 @@
-import { getHistory, clearHistory } from '../storage.js';
+import { getHistory, clearHistory, getSettings } from '../storage.js';
 import { exportCsv, exportJson } from '../components/export-buttons.js';
 import { emptyStateHtml } from '../components/loading.js';
 
@@ -74,7 +74,8 @@ export const bindReports = (root) => {
   });
 
   root.querySelector('#clear-history')?.addEventListener('click', () => {
-    if (confirm('Clear all local history?')) {
+    const needsConfirm = getSettings().confirmBeforeClear !== false;
+    if (!needsConfirm || confirm('Clear all local history?')) {
       clearHistory();
       root.querySelector('#reports-content').innerHTML = emptyStateHtml({
         icon: '📁',

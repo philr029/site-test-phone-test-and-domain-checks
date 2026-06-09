@@ -34,10 +34,14 @@ const pageBinders = {
 
 let apiHealth = null;
 
-const initTheme = () => {
+const resolveTheme = () => {
   const stored = localStorage.getItem(STORAGE_KEYS.theme);
-  const theme =
-    stored || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  if (stored === 'light' || stored === 'dark') return stored;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+};
+
+const initTheme = () => {
+  const theme = resolveTheme();
   document.documentElement.setAttribute('data-theme', theme);
   const toggle = document.getElementById('theme-toggle');
   if (toggle) {

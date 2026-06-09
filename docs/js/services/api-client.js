@@ -21,6 +21,19 @@ export const checkApiHealth = async () => {
 
 export const isApiAvailable = () => apiAvailable === true;
 
+/** Probe an arbitrary API base URL without mutating global state */
+export const probeApiHealth = async (baseUrl) => {
+  const url = (baseUrl || '').trim().replace(/\/$/, '');
+  if (!url) return null;
+  try {
+    const res = await fetch(`${url}/api/health`, { signal: AbortSignal.timeout(3000) });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+};
+
 export const apiPost = async (path, body) => {
   if (!API_BASE) throw new Error('Local API not available on GitHub Pages. Clone the repo and run npm run dev.');
   const res = await fetch(`${API_BASE}${path}`, {
