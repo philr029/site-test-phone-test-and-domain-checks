@@ -3,6 +3,23 @@ import { saveHistoryEntry } from '../storage.js';
 import { loadingHtml, emptyStateHtml } from '../components/loading.js';
 import { badgeHtml } from '../components/badges.js';
 
+const E164_REGEX = /^\+[1-9]\d{7,14}$/;
+
+const TEST_NAME_PRESETS = {
+  support: 'Support line check',
+  sales: 'Sales line check',
+  after_hours: 'After-hours voicemail check',
+  emergency: 'Emergency callback check'
+};
+
+const EXPECTED_OUTCOME_TEMPLATES = {
+  should_ring: 'should ring',
+  should_answer: 'should answer',
+  should_go_to_voicemail: 'should go to voicemail',
+  should_be_busy: 'should be busy',
+  should_fail: 'should fail'
+};
+
 export const renderPhoneTests = () => `
   <section class="page-header">
     <div>
@@ -22,8 +39,35 @@ export const renderPhoneTests = () => `
         <input type="text" id="test-name" placeholder="Support line UK" />
       </div>
       <div>
+        <label for="test-name-preset">Test name preset</label>
+        <div class="input-row">
+          <select id="test-name-preset">
+            <option value="">Custom</option>
+            <option value="support">Support line check</option>
+            <option value="sales">Sales line check</option>
+            <option value="after_hours">After-hours voicemail check</option>
+            <option value="emergency">Emergency callback check</option>
+          </select>
+          <button type="button" class="btn btn-secondary" id="apply-test-name-preset">Use</button>
+        </div>
+      </div>
+      <div>
         <label for="expected-outcome">Expected outcome</label>
         <input type="text" id="expected-outcome" placeholder="should ring" />
+      </div>
+      <div>
+        <label for="expected-outcome-template">Expected outcome template</label>
+        <div class="input-row">
+          <select id="expected-outcome-template">
+            <option value="">Custom</option>
+            <option value="should_ring">Should ring</option>
+            <option value="should_answer">Should answer</option>
+            <option value="should_go_to_voicemail">Should go to voicemail</option>
+            <option value="should_be_busy">Should be busy</option>
+            <option value="should_fail">Should fail</option>
+          </select>
+          <button type="button" class="btn btn-secondary" id="apply-expected-outcome-template">Use</button>
+        </div>
       </div>
       <div class="form-span">
         <label for="phone-notes">Notes</label>
@@ -44,37 +88,68 @@ export const renderPhoneTests = () => `
 export const bindPhoneTests = (root) => {
   const form = root.querySelector('#phone-check-form');
   const results = root.querySelector('#phone-results');
+  const testNameInput = root.querySelector('#test-name');
+  const testNamePreset = root.querySelector('#test-name-preset');
+  const expectedOutcomeInput = root.querySelector('#expected-outcome');
+  const expectedTemplate = root.querySelector('#expected-outcome-template');
+  const applyTestPresetButton = root.querySelector('#apply-test-name-preset');
+  const applyExpectedTemplateButton = root.querySelector('#apply-expected-outcome-template');
+
+  const applyTestPreset = () => {
+    const value = TEST_NAME_PRESETS[testNamePreset?.value];
+    if (value && testNameInput) testNameInput.value = value;
+  };
+
+  const applyExpectedTemplate = () => {
+    const value = EXPECTED_OUTCOME_TEMPLATES[expectedTemplate?.value];
+    if (value && expectedOutcomeInput) expectedOutcomeInput.value = value;
+  };
+
+  applyTestPresetButton?.addEventListener('click', applyTestPreset);
+  applyExpectedTemplateButton?.addEventListener('click', applyExpectedTemplate);
+  testNamePreset?.addEventListener('change', applyTestPreset);
+  expectedTemplate?.addEventListener('change', applyExpectedTemplate);
 
   form?.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const phoneNumber = root.querySelector('#phone-number').value.trim();
+    if (!E164_REGEX.test(phoneNumber)) {
+      results.innerHTML = `<div class="alert alert-error">Phone number must use E.164 format (e.g. +441234567890).</div>`;
+      return;
+    }
     results.innerHTML = loadingHtml('Placing test call…');
     try {
       const data = await runPhoneTest({
-        phoneNumber: root.querySelector('#phone-number').value,
-        testName: root.querySelector('#test-name').value,
-        expectedOutcome: root.querySelector('#expected-outcome').value,
-        notes: root.querySelector('#phone-notes').value
+        phoneNumber,
+        testName: testNameInput?.value.trim(),
+        expectedOutcome: expectedOutcomeInput?.value.trim(),
+        notes: root.querySelector('#phone-notes').value.trim()
       });
       saveHistoryEntry({
         testType: 'phone',
-        target: data.phoneNumber,
-        summary: { pass: data.status === 'pass' ? 1 : 0, fail: data.status === 'fail' ? 1 : 0, warn: data.status === 'warn' ? 1 : 0 }
+        target: phoneNumber,
+        summary: {
+          pass: data.status === 'pass' ? 1 : 0,
+          fail: data.status === 'fail' ? 1 : 0,
+          warn: data.status === 'warn' ? 1 : 0
+        }
       });
       results.innerHTML = `
         <article class="result-card">
           <header class="result-card-header">
             <div>
-              <h3>${data.testName || 'Phone test'}</h3>
-              <p class="result-sub">${data.phoneNumber} · ${data.mode} mode</p>
+              <h3>${testNameInput?.value.trim() || 'Phone test'}</h3>
+              <p class="result-sub">${phoneNumber}</p>
             </div>
             ${badgeHtml(data.status || 'warn')}
           </header>
           <table class="data-table compact">
             <tbody>
-              <tr><td>Call status</td><td>${badgeHtml(data.status || 'info', data.callStatus)}</td></tr>
-              <tr><td>Expected</td><td>${data.expectedOutcome || '—'}</td></tr>
+              <tr><td>Status</td><td>${badgeHtml(data.status || 'info', data.status)}</td></tr>
+              <tr><td>Carrier</td><td>${data.carrier || '—'}</td></tr>
+              <tr><td>Line type</td><td>${data.lineType || '—'}</td></tr>
               <tr><td>Notes</td><td>${data.notes || '—'}</td></tr>
-              <tr><td>Detail</td><td>${data.detail || '—'}</td></tr>
+              <tr><td>Raw</td><td><pre>${JSON.stringify(data.raw || {}, null, 2)}</pre></td></tr>
             </tbody>
           </table>
         </article>`;
