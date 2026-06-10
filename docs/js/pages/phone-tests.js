@@ -20,6 +20,14 @@ const EXPECTED_OUTCOME_TEMPLATES = {
   should_fail: 'should fail'
 };
 
+const escapeHtml = (value) =>
+  String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+
 export const renderPhoneTests = () => `
   <section class="page-header">
     <div>
@@ -134,27 +142,34 @@ export const bindPhoneTests = (root) => {
           warn: data.status === 'warn' ? 1 : 0
         }
       });
+      const safeStatus = escapeHtml(data.status || 'warn');
+      const safeCarrier = escapeHtml(data.carrier || '—');
+      const safeLineType = escapeHtml(data.lineType || '—');
+      const safeNotes = escapeHtml(data.notes || '—');
+      const safeRaw = escapeHtml(JSON.stringify(data.raw || {}, null, 2));
+      const safeTitle = escapeHtml(testNameInput?.value.trim() || 'Phone test');
+      const safePhone = escapeHtml(phoneNumber);
       results.innerHTML = `
         <article class="result-card">
           <header class="result-card-header">
             <div>
-              <h3>${testNameInput?.value.trim() || 'Phone test'}</h3>
-              <p class="result-sub">${phoneNumber}</p>
+              <h3>${safeTitle}</h3>
+              <p class="result-sub">${safePhone}</p>
             </div>
             ${badgeHtml(data.status || 'warn')}
           </header>
           <table class="data-table compact">
             <tbody>
-              <tr><td>Status</td><td>${badgeHtml(data.status || 'info', data.status)}</td></tr>
-              <tr><td>Carrier</td><td>${data.carrier || '—'}</td></tr>
-              <tr><td>Line type</td><td>${data.lineType || '—'}</td></tr>
-              <tr><td>Notes</td><td>${data.notes || '—'}</td></tr>
-              <tr><td>Raw</td><td><pre>${JSON.stringify(data.raw || {}, null, 2)}</pre></td></tr>
+              <tr><td>Status</td><td>${badgeHtml(data.status || 'info', safeStatus)}</td></tr>
+              <tr><td>Carrier</td><td>${safeCarrier}</td></tr>
+              <tr><td>Line type</td><td>${safeLineType}</td></tr>
+              <tr><td>Notes</td><td>${safeNotes}</td></tr>
+              <tr><td>Raw</td><td><pre>${safeRaw}</pre></td></tr>
             </tbody>
           </table>
         </article>`;
     } catch (err) {
-      results.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+      results.innerHTML = `<div class="alert alert-error">${escapeHtml(err.message)}</div>`;
     }
   });
 };
