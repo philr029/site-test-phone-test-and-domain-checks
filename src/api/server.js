@@ -7,7 +7,7 @@ import { URL } from 'node:url';
 import dotenv from 'dotenv';
 import { runTargetCheck } from '../lib/domain-checks.js';
 import { runSiteChecks } from '../lib/site-checks.js';
-import { runPhoneTest, getPhoneConfigStatus } from '../lib/phone-checks.js';
+import { runPhoneTest, getPhoneConfigStatus } from '../phone-tests.js';
 
 dotenv.config();
 
