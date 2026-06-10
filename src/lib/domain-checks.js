@@ -22,13 +22,6 @@ const pingSmtp = (host) =>
 
 const toCheckResult = (status, records = [], raw = null) => ({ status, records, raw });
 
-const statusFromMxToolboxCode = (code) => {
-  if (code === 'ISSUE') return 'fail';
-  if (code === 'WARNING') return 'warn';
-  if (code === 'CLEAN') return 'pass';
-  return 'skip';
-};
-
 const dohLookup = async (name, type) => {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 8000);
@@ -276,15 +269,24 @@ export const fallbackDomainCheck = async (domain, options = {}) => {
 };
 
 export const fallbackIpCheck = async (ip) => {
-  const [reverseResult, forwardResult, blacklist, ipReputation] = await Promise.all([
+  const [reverseResult, forwardResult, blacklistResult, ipReputationResult] = await Promise.allSettled([
     dns.reverse(ip),
     dns.lookup(ip),
     checkBlacklistPlaceholder(ip),
     checkIpReputationPlaceholder(ip)
   ]);
 
-  const ptrRecords = Array.isArray(reverseResult) ? reverseResult : [];
+  const ptrRecords = reverseResult.status === 'fulfilled' && Array.isArray(reverseResult.value) ? reverseResult.value : [];
   const hasPtr = ptrRecords.length > 0;
+  const forwardAddress = forwardResult.status === 'fulfilled' ? forwardResult.value?.address : null;
+  const blacklist =
+    blacklistResult.status === 'fulfilled'
+      ? blacklistResult.value
+      : toCheckResult('skip', [], { source: 'placeholder', note: 'Blacklist placeholder unavailable' });
+  const ipReputation =
+    ipReputationResult.status === 'fulfilled'
+      ? ipReputationResult.value
+      : toCheckResult('skip', [], { source: 'placeholder', note: 'IP reputation placeholder unavailable' });
 
   return {
     source: 'fallback-dns',
@@ -294,13 +296,15 @@ export const fallbackIpCheck = async (ip) => {
     statusCode: hasPtr ? 'CLEAN' : 'WARNING',
     checks: {
       domainStatus: toCheckResult('pass', [ip], { note: 'IP target' }),
-      dnsRecords: toCheckResult(forwardResult?.address ? 'pass' : 'warn', forwardResult?.address ? [forwardResult.address] : [], {
+      dnsRecords: toCheckResult(forwardAddress ? 'pass' : 'warn', forwardAddress ? [forwardAddress] : [], {
         source: 'dns',
-        forward: forwardResult || null
+        forward: forwardResult.status === 'fulfilled' ? forwardResult.value : null,
+        error: forwardResult.status === 'rejected' ? forwardResult.reason?.message : null
       }),
       reverseLookup: toCheckResult(hasPtr ? 'pass' : 'warn', ptrRecords, {
         source: 'dns',
-        reverse: ptrRecords
+        reverse: ptrRecords,
+        error: reverseResult.status === 'rejected' ? reverseResult.reason?.message : null
       }),
       blacklist,
       ipReputation
