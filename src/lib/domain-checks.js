@@ -4,6 +4,8 @@
 import dns from 'node:dns/promises';
 import net from 'node:net';
 
+const DOH_URL = 'https://dns.google/resolve';
+
 const pingSmtp = (host) =>
   new Promise((resolve) => {
     const socket = new net.Socket();
@@ -17,6 +19,174 @@ const pingSmtp = (host) =>
     socket.once('timeout', () => done(false));
     socket.connect(25, host);
   });
+
+const toCheckResult = (status, records = [], raw = null) => ({ status, records, raw });
+
+const statusFromMxToolboxCode = (code) => {
+  if (code === 'ISSUE') return 'fail';
+  if (code === 'WARNING') return 'warn';
+  if (code === 'CLEAN') return 'pass';
+  return 'skip';
+};
+
+const dohLookup = async (name, type) => {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  try {
+    const response = await fetch(
+      `${DOH_URL}?name=${encodeURIComponent(name)}&type=${encodeURIComponent(type)}`,
+      {
+        headers: { Accept: 'application/dns-json' },
+        signal: controller.signal
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`DoH lookup failed with status ${response.status}`);
+    }
+
+    const raw = await response.json();
+    const answers = Array.isArray(raw?.Answer) ? raw.Answer : [];
+    return { answers, raw };
+  } finally {
+    clearTimeout(timeout);
+  }
+};
+
+const queryMxRecords = async (domain) => {
+  try {
+    const { answers, raw } = await dohLookup(domain, 'MX');
+    const records = answers
+      .map((answer) => String(answer?.data || '').trim())
+      .filter(Boolean)
+      .map((value) => value.replace(/\.$/, ''));
+    return { records, raw: { source: 'doh', response: raw } };
+  } catch (dohError) {
+    try {
+      const records = await dns.resolveMx(domain);
+      const normalized = records.map((record) => `${record.priority} ${String(record.exchange || '').replace(/\.$/, '')}`);
+      return { records: normalized, raw: { source: 'dns', response: records } };
+    } catch (dnsError) {
+      return {
+        records: [],
+        raw: {
+          source: 'dns',
+          error: dnsError.message,
+          dohError: dohError.message
+        }
+      };
+    }
+  }
+};
+
+const queryTxtRecords = async (name) => {
+  try {
+    const { answers, raw } = await dohLookup(name, 'TXT');
+    const records = answers
+      .map((answer) => String(answer?.data || '').replace(/^"|"$/g, '').trim())
+      .filter(Boolean);
+    return { records, raw: { source: 'doh', response: raw } };
+  } catch (dohError) {
+    try {
+      const response = await dns.resolveTxt(name);
+      const records = response.map((chunks) => chunks.join(''));
+      return { records, raw: { source: 'dns', response } };
+    } catch (dnsError) {
+      return {
+        records: [],
+        raw: {
+          source: 'dns',
+          error: dnsError.message,
+          dohError: dohError.message
+        }
+      };
+    }
+  }
+};
+
+export const checkMx = async (domain) => {
+  const { records, raw } = await queryMxRecords(domain);
+  return toCheckResult(records.length > 0 ? 'pass' : 'fail', records, raw);
+};
+
+export const checkSpf = async (domain) => {
+  const { records, raw } = await queryTxtRecords(domain);
+  const spf = records.filter((record) => record.toLowerCase().startsWith('v=spf1'));
+  return toCheckResult(spf.length > 0 ? 'pass' : 'warn', spf, raw);
+};
+
+export const checkDkim = async (domain, selector) => {
+  if (!selector) {
+    return toCheckResult('skip', [], {
+      source: 'placeholder',
+      note: 'DKIM selector not configured. Set domain.dkimSelector to enable DNS checks.'
+    });
+  }
+
+  const { records, raw } = await queryTxtRecords(`${selector}._domainkey.${domain}`);
+  const dkim = records.filter((record) => record.toLowerCase().startsWith('v=dkim1'));
+  return toCheckResult(dkim.length > 0 ? 'pass' : 'warn', dkim, {
+    ...raw,
+    selector
+  });
+};
+
+export const checkDmarc = async (domain) => {
+  const { records, raw } = await queryTxtRecords(`_dmarc.${domain}`);
+  const dmarc = records.filter((record) => record.toLowerCase().startsWith('v=dmarc1'));
+  return toCheckResult(dmarc.length > 0 ? 'pass' : 'warn', dmarc, raw);
+};
+
+export const checkBlacklistPlaceholder = async (target) =>
+  toCheckResult('skip', [], {
+    source: 'placeholder',
+    target,
+    note: 'Blacklist placeholder — connect external blacklist provider.'
+  });
+
+export const checkIpReputationPlaceholder = async (target) =>
+  toCheckResult('skip', [], {
+    source: 'placeholder',
+    target,
+    note: 'IP reputation placeholder — connect AbuseIPDB or VirusTotal.'
+  });
+
+const checkDnsResolution = async (domain) => {
+  const [aResult, nsResult] = await Promise.allSettled([dns.resolve4(domain), dns.resolveNs(domain)]);
+  const aRecords = aResult.status === 'fulfilled' ? aResult.value : [];
+  const nsRecords = nsResult.status === 'fulfilled' ? nsResult.value : [];
+  const records = [
+    ...aRecords.map((value) => `A ${value}`),
+    ...nsRecords.map((value) => `NS ${value}`)
+  ];
+  return toCheckResult(records.length > 0 ? 'pass' : 'warn', records, {
+    source: 'dns',
+    aRecords,
+    nsRecords,
+    errors: {
+      a: aResult.status === 'rejected' ? aResult.reason?.message : null,
+      ns: nsResult.status === 'rejected' ? nsResult.reason?.message : null
+    }
+  });
+};
+
+const checkSmtpReachability = async (mxCheckResult) => {
+  const firstMx = mxCheckResult.records[0];
+  const host = String(firstMx || '').split(' ').slice(1).join(' ').trim();
+  if (!host) {
+    return toCheckResult('warn', [], {
+      source: 'smtp-probe',
+      note: 'No MX host available for SMTP probe.'
+    });
+  }
+
+  const reachable = await pingSmtp(host);
+  return toCheckResult(reachable ? 'pass' : 'warn', [host], {
+    source: 'smtp-probe',
+    host,
+    reachable
+  });
+};
 
 export const callMxToolbox = async (lookupType, target, apiKey) => {
   const url = `https://api.mxtoolbox.com/api/v1/lookup/${lookupType}/${encodeURIComponent(target)}`;
@@ -35,8 +205,10 @@ export const callMxToolbox = async (lookupType, target, apiKey) => {
 export const parseMxToolboxStatus = (payload, lookupType) => {
   const failedRecords = payload?.Failed || payload?.failed || [];
   const warnings = payload?.Warnings || payload?.warnings || [];
+  const informational = payload?.Information || payload?.information || [];
   const critical = failedRecords.length > 0;
   const warning = !critical && warnings.length > 0;
+
   return {
     source: 'mxtoolbox-api',
     lookupType,
@@ -48,45 +220,34 @@ export const parseMxToolboxStatus = (payload, lookupType) => {
         : warning
           ? `${lookupType.toUpperCase()} warning detected`
           : `${lookupType.toUpperCase()} clean`,
-    statusCode: critical ? 'ISSUE' : warning ? 'WARNING' : 'CLEAN'
+    statusCode: critical ? 'ISSUE' : warning ? 'WARNING' : 'CLEAN',
+    check: toCheckResult(
+      critical ? 'fail' : warning ? 'warn' : 'pass',
+      [...failedRecords, ...warnings, ...informational],
+      payload
+    )
   };
 };
 
-export const fallbackDomainCheck = async (domain) => {
-  const [mxResult, nsResult, aResult, txtResult, dmarcResult] = await Promise.allSettled([
-    dns.resolveMx(domain),
-    dns.resolveNs(domain),
-    dns.resolve4(domain),
-    dns.resolveTxt(domain),
-    dns.resolveTxt(`_dmarc.${domain}`)
+export const fallbackDomainCheck = async (domain, options = {}) => {
+  const [mx, spf, dkim, dmarc, dnsRecords] = await Promise.all([
+    checkMx(domain),
+    checkSpf(domain),
+    checkDkim(domain, options.dkimSelector),
+    checkDmarc(domain),
+    checkDnsResolution(domain)
   ]);
 
-  const mx = mxResult.status === 'fulfilled' ? mxResult.value : [];
-  const ns = nsResult.status === 'fulfilled' ? nsResult.value : [];
-  const aRecords = aResult.status === 'fulfilled' ? aResult.value : [];
-  const txt =
-    txtResult.status === 'fulfilled'
-      ? txtResult.value.map((chunks) => chunks.join(''))
-      : [];
-  const dmarcTxt =
-    dmarcResult.status === 'fulfilled'
-      ? dmarcResult.value.map((chunks) => chunks.join(''))
-      : [];
-
-  const spfRecords = txt.filter((record) => record.toLowerCase().startsWith('v=spf1'));
-  const dmarcRecords = dmarcTxt.filter((record) => record.toLowerCase().startsWith('v=dmarc1'));
-
-  let smtpReachable = false;
-  if (mx.length > 0) {
-    smtpReachable = await pingSmtp(mx[0].exchange);
-  }
+  const smtpReachable = await checkSmtpReachability(mx);
+  const blacklist = await checkBlacklistPlaceholder(domain);
+  const ipReputation = await checkIpReputationPlaceholder(domain);
 
   const issues = [];
-  if (mx.length === 0) issues.push('No MX records found');
-  if (spfRecords.length === 0) issues.push('No SPF record found');
-  if (dmarcRecords.length === 0) issues.push('No DMARC record found');
+  if (mx.status === 'fail') issues.push('No MX records found');
+  if (spf.status !== 'pass') issues.push('No SPF record found');
+  if (dmarc.status !== 'pass') issues.push('No DMARC record found');
 
-  const critical = issues.some((issue) => issue.includes('MX'));
+  const critical = mx.status === 'fail';
 
   return {
     source: 'fallback-dns',
@@ -95,53 +256,35 @@ export const fallbackDomainCheck = async (domain) => {
     summary: issues.length ? issues.join('; ') : 'DNS checks clean',
     statusCode: critical ? 'ISSUE' : issues.length ? 'WARNING' : 'CLEAN',
     checks: {
-      domainStatus: { passed: aRecords.length > 0 || ns.length > 0, status: aRecords.length || ns.length ? 'pass' : 'fail' },
-      dnsRecords: { passed: ns.length > 0 || aRecords.length > 0, records: { ns, a: aRecords }, status: ns.length || aRecords.length ? 'pass' : 'warn' },
-      mx: { passed: mx.length > 0, records: mx, status: mx.length ? 'pass' : 'fail' },
-      spf: { passed: spfRecords.length > 0, records: spfRecords, status: spfRecords.length ? 'pass' : 'warn' },
-      dkim: {
-        passed: null,
-        skipped: true,
-        status: 'skip',
-        note: 'DKIM placeholder — add domain.dkimSelector when known.'
-      },
-      dmarc: { passed: dmarcRecords.length > 0, records: dmarcRecords, status: dmarcRecords.length ? 'pass' : 'warn' },
-      blacklist: {
-        passed: null,
-        skipped: true,
-        status: 'skip',
-        note: 'Blacklist status placeholder — configure MXTOOLBOX_API_KEY or AbuseIPDB.'
-      },
-      ssl: { passed: null, skipped: true, status: 'skip', note: 'SSL checked separately via HTTPS probe.' },
-      ipReputation: {
-        passed: null,
-        skipped: true,
-        status: 'skip',
-        note: 'IP reputation placeholder — configure AbuseIPDB or VirusTotal API keys.'
-      },
-      smtpReachable: { passed: smtpReachable, status: smtpReachable ? 'pass' : 'warn' }
+      domainStatus: toCheckResult(dnsRecords.status === 'pass' ? 'pass' : 'fail', dnsRecords.records, dnsRecords.raw),
+      dnsRecords,
+      mx,
+      spf,
+      dkim,
+      dmarc,
+      blacklist,
+      ssl: toCheckResult('skip', [], { source: 'placeholder', note: 'SSL checked separately via HTTPS probe.' }),
+      ipReputation,
+      smtpReachable
     },
-    dns: { mx, ns, aRecords, txt, dmarc: dmarcRecords }
+    dns: {
+      mx: mx.records,
+      txt: { spf: spf.records, dmarc: dmarc.records, dkim: dkim.records },
+      dnsRecords: dnsRecords.records
+    }
   };
 };
 
 export const fallbackIpCheck = async (ip) => {
-  const [reverseResult, forwardResult] = await Promise.allSettled([
+  const [reverseResult, forwardResult, blacklist, ipReputation] = await Promise.all([
     dns.reverse(ip),
-    dns.lookup(ip)
+    dns.lookup(ip),
+    checkBlacklistPlaceholder(ip),
+    checkIpReputationPlaceholder(ip)
   ]);
 
-  const reverse =
-    reverseResult.status === 'fulfilled'
-      ? reverseResult.value
-      : { error: reverseResult.reason?.message, value: [] };
-  const forward =
-    forwardResult.status === 'fulfilled'
-      ? forwardResult.value
-      : { error: forwardResult.reason?.message };
-
-  const hasPtr = Array.isArray(reverse) ? reverse.length > 0 : reverse.value?.length > 0;
-  const ptrRecords = Array.isArray(reverse) ? reverse : reverse.value || [];
+  const ptrRecords = Array.isArray(reverseResult) ? reverseResult : [];
+  const hasPtr = ptrRecords.length > 0;
 
   return {
     source: 'fallback-dns',
@@ -150,15 +293,17 @@ export const fallbackIpCheck = async (ip) => {
     summary: hasPtr ? 'PTR record present' : 'No PTR record found',
     statusCode: hasPtr ? 'CLEAN' : 'WARNING',
     checks: {
-      domainStatus: { passed: true, status: 'pass', note: 'IP target' },
-      dnsRecords: {
-        passed: Boolean(forward?.address),
-        address: forward?.address || null,
-        status: forward?.address ? 'pass' : 'warn'
-      },
-      reverseLookup: { passed: hasPtr, records: ptrRecords, status: hasPtr ? 'pass' : 'warn' },
-      blacklist: { passed: null, skipped: true, status: 'skip', note: 'Blacklist placeholder' },
-      ipReputation: { passed: null, skipped: true, status: 'skip', note: 'IP reputation placeholder' }
+      domainStatus: toCheckResult('pass', [ip], { note: 'IP target' }),
+      dnsRecords: toCheckResult(forwardResult?.address ? 'pass' : 'warn', forwardResult?.address ? [forwardResult.address] : [], {
+        source: 'dns',
+        forward: forwardResult || null
+      }),
+      reverseLookup: toCheckResult(hasPtr ? 'pass' : 'warn', ptrRecords, {
+        source: 'dns',
+        reverse: ptrRecords
+      }),
+      blacklist,
+      ipReputation
     }
   };
 };
@@ -173,18 +318,17 @@ export const probeSsl = async (domain) => {
       redirect: 'follow'
     });
     clearTimeout(timeout);
-    return {
-      passed: res.ok || res.status < 500,
-      status: res.ok ? 'pass' : 'warn',
+
+    return toCheckResult(res.ok || res.status < 500 ? 'pass' : 'warn', [`HTTPS ${res.status}`], {
+      url: `https://${domain}`,
       statusCode: res.status,
-      note: `HTTPS responded with ${res.status}`
-    };
+      ok: res.ok
+    });
   } catch (error) {
-    return {
-      passed: false,
-      status: 'fail',
-      note: error.message || 'SSL/HTTPS probe failed'
-    };
+    return toCheckResult('fail', [], {
+      url: `https://${domain}`,
+      error: error.message || 'SSL/HTTPS probe failed'
+    });
   }
 };
 
@@ -192,24 +336,44 @@ export const runTargetCheck = async (input, env = process.env) => {
   const target = String(input || '').trim();
   const isIp = /^(\d{1,3}\.){3}\d{1,3}$/.test(target) || target.includes(':');
   const apiKey = env.MXTOOLBOX_API_KEY;
+  const dkimSelector = env.DOMAIN_DKIM_SELECTOR;
 
   let result;
   if (apiKey && !isIp) {
     const suite = [];
+    const checks = {
+      domainStatus: toCheckResult('skip', [], { source: 'mxtoolbox-api', note: 'Domain resolution not included in API suite.' }),
+      dnsRecords: toCheckResult('skip', [], { source: 'mxtoolbox-api', note: 'DNS records not included in API suite.' })
+    };
+
     for (const lookupType of ['mx', 'spf', 'dmarc', 'blacklist']) {
       try {
         const payload = await callMxToolbox(lookupType, target, apiKey);
-        suite.push(parseMxToolboxStatus(payload, lookupType));
+        const parsed = parseMxToolboxStatus(payload, lookupType);
+        suite.push(parsed);
+        checks[lookupType] = parsed.check;
       } catch (error) {
+        const fallbackCheck = toCheckResult('warn', [], {
+          source: 'mxtoolbox-api',
+          lookupType,
+          error: error.message
+        });
+
         suite.push({
           lookupType,
           critical: false,
           warning: true,
           statusCode: 'WARNING',
-          summary: `${lookupType} lookup failed: ${error.message}`
+          summary: `${lookupType} lookup failed: ${error.message}`,
+          check: fallbackCheck
         });
+        checks[lookupType] = fallbackCheck;
       }
     }
+
+    checks.dkim = await checkDkim(target, dkimSelector);
+    checks.ipReputation = await checkIpReputationPlaceholder(target);
+
     const critical = suite.some((e) => e.critical);
     const warning = suite.some((e) => e.warning);
     result = {
@@ -220,17 +384,17 @@ export const runTargetCheck = async (input, env = process.env) => {
       warning,
       statusCode: critical ? 'ISSUE' : warning ? 'WARNING' : 'CLEAN',
       summary: critical ? 'MXToolbox reported issues' : warning ? 'MXToolbox warnings' : 'MXToolbox clean',
-      suite
+      suite,
+      checks
     };
   } else {
     result = isIp
       ? { target, type: 'ip', ...(await fallbackIpCheck(target)) }
-      : { target, type: 'domain', ...(await fallbackDomainCheck(target)) };
+      : { target, type: 'domain', ...(await fallbackDomainCheck(target, { dkimSelector })) };
   }
 
   if (!isIp && result.checks) {
-    const ssl = await probeSsl(target);
-    result.checks.ssl = ssl;
+    result.checks.ssl = await probeSsl(target);
   }
 
   return {
