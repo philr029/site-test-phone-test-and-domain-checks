@@ -37,44 +37,11 @@ export const readFile = async (file) => {
 };
 
 /**
- * Process file with optional web worker for large datasets.
- * @param {File} file
- * @param {{ columnRules?: Record<number, string>, onProgress?: (n: number) => void }} [options]
- */
-export const processUploadedFile = async (file, options = {}) => {
-  const { columnRules = {}, onProgress } = options;
-  const raw = await readFile(file);
-
-  onProgress?.(10);
-
-  let parsed;
-  if (raw.type === 'csv' && raw.content.length > WORKER_THRESHOLD * 200) {
-    parsed = await processInWorker(raw);
-  } else {
-    parsed = await parseSpreadsheet({
-      type: raw.type,
-      content: raw.content,
-      fileName: raw.fileName
-    });
-  }
-
-  onProgress?.(60);
-
-  if (parsed.rowCount > MAX_ROWS) {
-    throw new Error(`File has ${parsed.rowCount.toLocaleString()} rows. Maximum is ${MAX_ROWS.toLocaleString()}.`);
-  }
-
-  const validated = validateDataset(parsed, columnRules);
-  onProgress?.(100);
-
-  return validated;
-};
-
-/**
  * Offload CSV parse + validate to a web worker.
- * @param {{ type: string, content: string|ArrayBuffer, fileName: string }} raw
+ * @param {{ type: string, content: string, fileName: string }} raw
+ * @param {Record<number, string>} columnRules
  */
-const processInWorker = (raw) =>
+const processCsvInWorker = (raw, columnRules = {}) =>
   new Promise((resolve, reject) => {
     const worker = new Worker(new URL('./worker.js', import.meta.url), { type: 'module' });
 
@@ -93,14 +60,15 @@ const processInWorker = (raw) =>
       type: 'process',
       payload: {
         fileType: raw.type,
-        content: raw.type === 'csv' ? raw.content : null,
-        fileName: raw.fileName
+        content: raw.content,
+        fileName: raw.fileName,
+        columnRules
       }
     });
   });
 
 /**
- * For XLSX large files: parse on main thread (SheetJS), validate in worker.
+ * Validate pre-parsed data in a web worker for large datasets.
  * @param {object} parsed
  * @param {Record<number, string>} [columnRules]
  */
@@ -125,28 +93,71 @@ export const validateInWorker = (parsed, columnRules = {}) =>
   });
 
 /**
- * Full pipeline with worker fallback for XLSX validation.
+ * Full upload pipeline with worker offload for large CSV (parse+validate) or XLSX (validate only).
  * @param {File} file
- * @param {object} [options]
+ * @param {{ columnRules?: Record<number, string>, onProgress?: (n: number) => void }} [options]
  */
 export const handleFileUpload = async (file, options = {}) => {
   const { columnRules = {}, onProgress } = options;
   const raw = await readFile(file);
   onProgress?.(10);
 
-  const parsed = await parseSpreadsheet({
-    type: raw.type,
-    content: raw.content,
-    fileName: raw.fileName
-  });
+  const useCsvWorker = raw.type === 'csv' && (
+    typeof raw.content === 'string' && (
+      raw.content.length > WORKER_THRESHOLD * 200 ||
+      raw.content.split(/\r?\n/).length > WORKER_THRESHOLD
+    )
+  );
 
-  onProgress?.(40);
+  let validated;
+  if (useCsvWorker) {
+    onProgress?.(30);
+    validated = await processCsvInWorker(raw, columnRules);
+  } else {
+    const parsed = await parseSpreadsheet({
+      type: raw.type,
+      content: raw.content,
+      fileName: raw.fileName
+    });
 
-  if (parsed.rowCount > MAX_ROWS) {
-    throw new Error(`File has ${parsed.rowCount.toLocaleString()} rows. Maximum is ${MAX_ROWS.toLocaleString()}.`);
+    onProgress?.(40);
+
+    if (parsed.rowCount > MAX_ROWS) {
+      throw new Error(`File has ${parsed.rowCount.toLocaleString()} rows. Maximum is ${MAX_ROWS.toLocaleString()}.`);
+    }
+
+    validated = await validateInWorker(parsed, columnRules);
   }
 
-  const validated = await validateInWorker(parsed, columnRules);
+  onProgress?.(90);
+
+  if (validated.rowCount > MAX_ROWS) {
+    throw new Error(`File has ${validated.rowCount.toLocaleString()} rows. Maximum is ${MAX_ROWS.toLocaleString()}.`);
+  }
+
   onProgress?.(100);
   return validated;
+};
+
+/** @deprecated Use handleFileUpload — kept for backward compatibility */
+export const processUploadedFile = handleFileUpload;
+
+/**
+ * Re-validate an existing dataset after column rule changes.
+ * @param {object} dataset - Previously validated dataset
+ * @param {Record<number, string>} columnRules
+ */
+export const revalidateDataset = async (dataset, columnRules = {}) => {
+  const rawRows = dataset.rows.map((r) => r.cells);
+  const parsed = {
+    fileName: dataset.fileName,
+    headers: dataset.headers,
+    rows: rawRows,
+    malformedRows: dataset.malformedRows ?? [],
+    parseErrors: dataset.parseErrors ?? [],
+    columnTypes: dataset.columnTypes ?? [],
+    columnMapping: dataset.columnMapping ?? {},
+    rowCount: rawRows.length
+  };
+  return validateInWorker(parsed, columnRules);
 };

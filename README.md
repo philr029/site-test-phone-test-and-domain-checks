@@ -202,18 +202,27 @@ Supported columns are auto-detected from headers (case-insensitive): `domain`, `
 | `numeric` | Parseable number |
 | `boolean` | `true/false`, `yes/no`, `1/0` |
 
-Invalid cells are highlighted in the table. Download a **Validation Report** as JSON or CSV from the upload controls.
+Invalid cells are highlighted in the table. Override column validation types under **Column validation rules** (defaults to auto-detected types). Download a **Validation Report** as JSON or CSV from the upload controls.
 
 ### Batch processing
 
 1. Upload a `.csv` or `.xlsx` file (up to **50,000 rows**).
 2. Toggle **Raw View** / **Cleaned View** to inspect normalized values.
-3. Select check types: Domain & IP, Phone, Site.
-4. Map spreadsheet columns to each check type.
-5. Click **Run batch checks** — progress bar shows row-by-row status.
-6. Export results CSV or cleaned dataset.
+3. Optionally override **Column validation rules** per column (email, domain, IP, phone, URL, numeric, boolean, text).
+4. Select check types: Domain & IP, Phone, Site.
+5. Map spreadsheet columns to each check type.
+6. Click **Run batch checks** — progress bar shows row-by-row status.
+7. Export results as CSV or JSON, or export the cleaned dataset.
 
 Batch checks call the same clients as the individual test tabs (`runDomainCheck`, `runPhoneTest`, `runSiteCheck`), using the local API when `npm run dev` is running.
+
+**Example column mapping for multi-check sample:**
+
+| Check type | Map to column |
+|------------|---------------|
+| Domain & IP | `domain` (falls back to `ip` if domain empty) |
+| Phone | `phone` |
+| Site | `website` |
 
 ### Error handling examples
 
@@ -235,6 +244,7 @@ npm test             # Unit tests + Playwright form tests
 
 ### Performance
 
-- Files with 500+ rows offload validation to a **Web Worker** to keep the UI responsive.
-- The data table uses **pagination** (25–500 rows per page) and lazy row rendering.
+- CSV files with 500+ rows offload **parse + validate** to a **Web Worker**.
+- XLSX files parse on the main thread (SheetJS); validation runs in a worker for 500+ rows.
+- The data table uses **pagination** (25–500 rows per page) and **virtual scroll** (lazy row rendering) for 200+ visible rows.
 - Batch processing yields to the main thread between rows for progress updates.

@@ -1,11 +1,14 @@
 import {
   handleFileUpload,
+  revalidateDataset,
   buildValidationReport,
   validationReportToCsv,
   runBatch,
   suggestCheckMapping,
   SpreadsheetTable,
-  CHECK_TYPE_LABELS
+  CHECK_TYPE_LABELS,
+  VALIDATION_TYPES,
+  VALIDATION_TYPE_LABELS
 } from '../spreadsheet/index.js';
 import { runDomainCheck } from '../services/domain-client.js';
 import { runSiteCheck } from '../services/site-client.js';
@@ -61,6 +64,20 @@ export const bindSpreadsheet = (root) => {
     if (progressFill) progressFill.style.width = `${pct}%`;
   };
 
+  const clearSheet = () => {
+    sheetState = null;
+    dataTable = null;
+    batchAbort?.abort();
+    batchAbort = null;
+    errorsEl.innerHTML = '';
+    resultsEl.innerHTML = '';
+    controlsEl.classList.add('hidden');
+    controlsEl.innerHTML = '';
+    preview.innerHTML = '';
+    if (input) input.value = '';
+    setProgress(100);
+  };
+
   const handleFile = async (file) => {
     if (!file) return;
     errorsEl.innerHTML = '';
@@ -111,19 +128,49 @@ export const bindSpreadsheet = (root) => {
   };
 
   root._sheetRerender = rerender;
+  root._sheetClear = clearSheet;
+};
+
+const validationTypeOptions = (selected) => {
+  const opts = [{ value: '', label: VALIDATION_TYPE_LABELS.auto }];
+  for (const type of Object.values(VALIDATION_TYPES)) {
+    opts.push({ value: type, label: VALIDATION_TYPE_LABELS[type] ?? type });
+  }
+  return opts.map((o) =>
+    `<option value="${o.value}" ${String(selected) === String(o.value) ? 'selected' : ''}>${o.label}</option>`
+  ).join('');
+};
+
+const applyColumnRules = async (root) => {
+  if (!sheetState) return;
+  const preview = root.querySelector('#sheet-preview');
+  preview.innerHTML = loadingHtml('Re-validating with updated column rules…');
+
+  try {
+    sheetState.data = await revalidateDataset(sheetState.data, sheetState.columnRules);
+    renderControls(root.querySelector('#sheet-controls'), root);
+    renderDataTable(preview, sheetState);
+  } catch (err) {
+    preview.innerHTML = '';
+    root.querySelector('#sheet-errors').innerHTML =
+      `<div class="alert alert-error"><strong>Validation failed:</strong> ${err.message}</div>`;
+  }
 };
 
 const renderControls = (el, root) => {
   if (!sheetState) return;
-  const { data, viewMode, checkTypes, checkMapping } = sheetState;
+  const { data, viewMode, checkTypes, checkMapping, columnRules } = sheetState;
   const invalid = data.summary?.invalid ?? 0;
 
   el.classList.remove('hidden');
   el.innerHTML = `
     <article class="panel-card sheet-controls-card">
       <header class="panel-header">
-        <h2>${data.fileName}</h2>
-        <span class="muted">${data.summary.total.toLocaleString()} rows · ${invalid} invalid</span>
+        <div>
+          <h2>${data.fileName}</h2>
+          <span class="muted">${data.summary.total.toLocaleString()} rows · ${invalid} invalid</span>
+        </div>
+        <button type="button" class="btn btn-secondary btn-sm" id="clear-sheet">Clear &amp; upload new</button>
       </header>
 
       <div class="sheet-control-grid">
@@ -163,6 +210,26 @@ const renderControls = (el, root) => {
             `).join('')}
           </div>
         </fieldset>
+
+        <fieldset class="sheet-fieldset sheet-column-rules">
+          <legend>Column validation rules</legend>
+          <p class="hint sheet-rules-hint">Override auto-detected types per column. Changes re-run validation.</p>
+          <div class="column-rules-grid">
+            ${data.headers.map((h, i) => {
+              const inferred = data.columnMeta?.[i]?.inferredType ?? data.columnTypes?.[i]?.inferredType ?? 'string';
+              const current = columnRules[i] ?? '';
+              return `
+                <label>
+                  <span class="column-rule-name">${h}</span>
+                  <span class="column-rule-inferred muted">detected: ${inferred}</span>
+                  <select data-col-rule="${i}">
+                    ${validationTypeOptions(current)}
+                  </select>
+                </label>
+              `;
+            }).join('')}
+          </div>
+        </fieldset>
       </div>
 
       <div class="sheet-actions">
@@ -174,6 +241,8 @@ const renderControls = (el, root) => {
       </div>
     </article>
   `;
+
+  el.querySelector('#clear-sheet')?.addEventListener('click', () => root._sheetClear?.());
 
   el.querySelectorAll('[data-view]').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -196,6 +265,15 @@ const renderControls = (el, root) => {
     });
   });
 
+  el.querySelectorAll('[data-col-rule]').forEach((sel) => {
+    sel.addEventListener('change', () => {
+      const col = Number(sel.dataset.colRule);
+      if (sel.value === '') delete sheetState.columnRules[col];
+      else sheetState.columnRules[col] = sel.value;
+      applyColumnRules(root);
+    });
+  });
+
   el.querySelector('#export-cleaned')?.addEventListener('click', () => exportCleanedData());
   el.querySelector('#export-validation-json')?.addEventListener('click', () => {
     const report = buildValidationReport(sheetState.data);
@@ -213,13 +291,15 @@ const renderControls = (el, root) => {
 const renderDataTable = (el, state) => {
   el.innerHTML = '<div id="sheet-table-host"></div>';
   const host = el.querySelector('#sheet-table-host');
+  const rowCount = state.data.rows.length;
   dataTable = new SpreadsheetTable(host, {
     headers: state.data.headers,
     rows: state.data.rows,
     viewMode: state.viewMode,
     highlightErrors: true,
     usePagination: true,
-    pageSize: 50
+    useVirtualScroll: rowCount > 500,
+    pageSize: rowCount > 1000 ? 250 : 50
   });
 };
 
@@ -283,7 +363,10 @@ const runChecks = async (root) => {
     <article class="panel-card">
       <header class="panel-header">
         <h2>Batch results</h2>
-        <button type="button" class="btn btn-secondary btn-sm" id="export-sheet-csv">Export results CSV</button>
+        <div class="sheet-results-actions">
+          <button type="button" class="btn btn-secondary btn-sm" id="export-sheet-csv">Export CSV</button>
+          <button type="button" class="btn btn-secondary btn-sm" id="export-sheet-json">Export JSON</button>
+        </div>
       </header>
       <div class="summary-pills">
         ${badgeHtml('pass', `${summary.pass} pass`)}
@@ -323,23 +406,35 @@ const runChecks = async (root) => {
           </tbody>
         </table>
       </div>
-      ${results.length > 500 ? `<p class="hint">Showing first 500 of ${results.length.toLocaleString()} results. Export CSV for full data.</p>` : ''}
+      ${results.length > 500 ? `<p class="hint">Showing first 500 of ${results.length.toLocaleString()} results. Export for full data.</p>` : ''}
     </article>
   `;
 
+  const batchExportColumns = [
+    { label: 'row', value: (r) => r.index },
+    { label: 'company', value: (r) => r.company },
+    { label: 'domain', value: (r) => r.domain },
+    { label: 'ip', value: (r) => r.ip },
+    { label: 'phone', value: (r) => r.phone },
+    { label: 'site', value: (r) => r.site },
+    { label: 'status', value: (r) => r.status },
+    { label: 'domain_check', value: (r) => r.checks.domain?.status },
+    { label: 'phone_check', value: (r) => r.checks.phone?.status },
+    { label: 'site_check', value: (r) => r.checks.site?.status },
+    { label: 'detail', value: (r) => r.detail }
+  ];
+
   resultsEl.querySelector('#export-sheet-csv')?.addEventListener('click', () => {
-    exportCsv(`spreadsheet-results-${Date.now()}.csv`, results, [
-      { label: 'row', value: (r) => r.index },
-      { label: 'company', value: (r) => r.company },
-      { label: 'domain', value: (r) => r.domain },
-      { label: 'ip', value: (r) => r.ip },
-      { label: 'phone', value: (r) => r.phone },
-      { label: 'site', value: (r) => r.site },
-      { label: 'status', value: (r) => r.status },
-      { label: 'domain_check', value: (r) => r.checks.domain?.status },
-      { label: 'phone_check', value: (r) => r.checks.phone?.status },
-      { label: 'site_check', value: (r) => r.checks.site?.status },
-      { label: 'detail', value: (r) => r.detail }
-    ]);
+    exportCsv(`spreadsheet-results-${Date.now()}.csv`, results, batchExportColumns);
+  });
+
+  resultsEl.querySelector('#export-sheet-json')?.addEventListener('click', () => {
+    exportJson(`spreadsheet-results-${Date.now()}.json`, {
+      fileName: sheetState.data.fileName,
+      generatedAt: new Date().toISOString(),
+      checkTypes: sheetState.checkTypes,
+      summary,
+      results
+    });
   });
 };

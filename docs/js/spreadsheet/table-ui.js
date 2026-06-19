@@ -3,6 +3,8 @@
  */
 import { DEFAULT_PAGE_SIZE, VIRTUAL_ROW_HEIGHT } from './constants.js';
 
+const VIRTUAL_SCROLL_THRESHOLD = 200;
+
 export class SpreadsheetTable {
   /**
    * @param {HTMLElement} container
@@ -26,7 +28,8 @@ export class SpreadsheetTable {
     this.page = 1;
     this.colWidths = this.headers.map(() => 140);
     this.filteredRows = [...this.rows];
-    this._resizeState = null;
+    this._scrollTop = 0;
+    this._scrollHandler = null;
 
     this.render();
   }
@@ -34,6 +37,10 @@ export class SpreadsheetTable {
   getCellValue(row, colIdx) {
     const cells = this.viewMode === 'cleaned' ? row.cleaned ?? row.cells : row.cells;
     return cells[colIdx] ?? '';
+  }
+
+  shouldUseVirtualScroll(rowCount) {
+    return this.useVirtualScroll || rowCount > VIRTUAL_SCROLL_THRESHOLD;
   }
 
   applyFiltersAndSort() {
@@ -71,9 +78,15 @@ export class SpreadsheetTable {
   }
 
   setData({ headers, rows, viewMode }) {
-    if (headers) this.headers = headers;
+    if (headers) {
+      this.headers = headers;
+      if (this.colWidths.length !== headers.length) {
+        this.colWidths = headers.map((_, i) => this.colWidths[i] ?? 140);
+      }
+    }
     if (rows) this.rows = rows;
     if (viewMode) this.viewMode = viewMode;
+    this._scrollTop = 0;
     this.applyFiltersAndSort();
     this.render();
   }
@@ -85,12 +98,14 @@ export class SpreadsheetTable {
     const start = this.usePagination ? (this.page - 1) * this.pageSize : 0;
     const end = this.usePagination ? start + this.pageSize : total;
     const pageRows = this.filteredRows.slice(start, end);
+    const virtual = this.shouldUseVirtualScroll(pageRows.length);
+    const colSpan = this.headers.length + 2;
 
     this.container.innerHTML = `
       <div class="sheet-toolbar">
         <div class="sheet-toolbar-left">
           <input type="search" class="sheet-search" placeholder="Search all columns…" value="${this.escapeAttr(this.globalFilter)}" data-action="global-filter" />
-          <span class="muted sheet-row-count">${total.toLocaleString()} rows</span>
+          <span class="muted sheet-row-count">${total.toLocaleString()} rows${virtual ? ' · virtual scroll' : ''}</span>
         </div>
         <div class="sheet-toolbar-right">
           ${this.usePagination ? `
@@ -103,7 +118,7 @@ export class SpreadsheetTable {
           ` : ''}
         </div>
       </div>
-      <div class="sheet-table-wrap" data-virtual="${this.useVirtualScroll}">
+      <div class="sheet-table-wrap" data-virtual="${virtual}">
         <table class="data-table sheet-table">
           <thead class="sheet-thead-sticky">
             <tr>
@@ -129,8 +144,8 @@ export class SpreadsheetTable {
               <th></th>
             </tr>
           </thead>
-          <tbody>
-            ${pageRows.map((row) => this.renderRow(row)).join('')}
+          <tbody class="${virtual ? 'sheet-virtual-body' : ''}" ${virtual ? `style="--virtual-row-height:${VIRTUAL_ROW_HEIGHT}px"` : ''}>
+            ${virtual ? this.renderVirtualRows(pageRows, colSpan) : pageRows.map((row) => this.renderRow(row)).join('')}
           </tbody>
         </table>
       </div>
@@ -143,12 +158,38 @@ export class SpreadsheetTable {
       ` : ''}
     `;
 
-    this.bindEvents();
+    this.bindEvents(virtual, pageRows, colSpan);
+  }
+
+  renderVirtualRows(pageRows, colSpan) {
+    const wrap = this.container.querySelector?.('.sheet-table-wrap');
+    const containerHeight = wrap?.clientHeight ?? 480;
+    const rowHeight = VIRTUAL_ROW_HEIGHT;
+    const buffer = 8;
+    const visibleCount = Math.ceil(containerHeight / rowHeight) + buffer;
+    const maxStart = Math.max(0, pageRows.length - visibleCount);
+    const startIdx = Math.min(Math.floor(this._scrollTop / rowHeight), maxStart);
+    const endIdx = Math.min(startIdx + visibleCount, pageRows.length);
+    const topPad = startIdx * rowHeight;
+    const bottomPad = Math.max(0, (pageRows.length - endIdx) * rowHeight);
+    const visible = pageRows.slice(startIdx, endIdx);
+
+    return `
+      <tr class="sheet-virtual-spacer" aria-hidden="true"><td colspan="${colSpan}" style="height:${topPad}px;padding:0;border:none"></td></tr>
+      ${visible.map((row) => this.renderRow(row)).join('')}
+      <tr class="sheet-virtual-spacer" aria-hidden="true"><td colspan="${colSpan}" style="height:${bottomPad}px;padding:0;border:none"></td></tr>
+    `;
+  }
+
+  updateVirtualBody(pageRows, colSpan) {
+    const tbody = this.container.querySelector('.sheet-virtual-body');
+    if (!tbody) return;
+    tbody.innerHTML = this.renderVirtualRows(pageRows, colSpan);
   }
 
   renderRow(row) {
     const invalidClass = !row.valid ? 'row-invalid' : '';
-    return `<tr class="${invalidClass}" data-row="${row.index}">
+    return `<tr class="${invalidClass}" data-row="${row.index}" style="height:${VIRTUAL_ROW_HEIGHT}px">
       <td class="sheet-row-num">${row.index}</td>
       ${this.headers.map((_, i) => {
         const err = this.highlightErrors && row.cellErrors?.[i];
@@ -158,10 +199,22 @@ export class SpreadsheetTable {
     </tr>`;
   }
 
-  bindEvents() {
+  bindEvents(virtual, pageRows, colSpan) {
+    const wrap = this.container.querySelector('.sheet-table-wrap');
+
+    if (virtual && wrap) {
+      if (this._scrollHandler) wrap.removeEventListener('scroll', this._scrollHandler);
+      this._scrollHandler = () => {
+        this._scrollTop = wrap.scrollTop;
+        this.updateVirtualBody(pageRows, colSpan);
+      };
+      wrap.addEventListener('scroll', this._scrollHandler, { passive: true });
+    }
+
     this.container.querySelector('[data-action="global-filter"]')?.addEventListener('input', (e) => {
       this.globalFilter = e.target.value;
       this.page = 1;
+      this._scrollTop = 0;
       this.render();
       this.onChange({ type: 'filter' });
     });
@@ -170,6 +223,7 @@ export class SpreadsheetTable {
       el.addEventListener('input', (e) => {
         this.filters[e.target.dataset.col] = e.target.value;
         this.page = 1;
+        this._scrollTop = 0;
         this.render();
       });
     });
@@ -182,6 +236,7 @@ export class SpreadsheetTable {
           this.sortCol = col;
           this.sortDir = 'asc';
         }
+        this._scrollTop = 0;
         this.render();
       });
     });
@@ -189,12 +244,14 @@ export class SpreadsheetTable {
     this.container.querySelector('[data-action="page-size"]')?.addEventListener('change', (e) => {
       this.pageSize = Number(e.target.value);
       this.page = 1;
+      this._scrollTop = 0;
       this.render();
     });
 
     this.container.querySelector('[data-action="prev"]')?.addEventListener('click', () => {
       if (this.page > 1) {
         this.page--;
+        this._scrollTop = 0;
         this.render();
       }
     });
@@ -203,6 +260,7 @@ export class SpreadsheetTable {
       const totalPages = Math.ceil(this.filteredRows.length / this.pageSize);
       if (this.page < totalPages) {
         this.page++;
+        this._scrollTop = 0;
         this.render();
       }
     });

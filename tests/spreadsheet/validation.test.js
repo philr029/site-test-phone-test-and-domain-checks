@@ -87,4 +87,17 @@ describe('spreadsheet validation', () => {
       assert.equal(fn(''), null);
     }
   });
+
+  it('validateDataset respects columnRules overrides', () => {
+    const dataset = {
+      headers: ['host'],
+      rows: [['example.com'], ['not-valid!!!']],
+      columnTypes: [{ header: 'host', index: 0, inferredType: 'string' }],
+      columnMapping: { domain: 0 }
+    };
+    const forced = validateDataset(dataset, { 0: VALIDATION_TYPES.domain });
+    assert.equal(forced.rows[0].valid, true);
+    assert.equal(forced.rows[1].valid, false);
+    assert.ok(forced.rows[1].cellErrors[0]);
+  });
 });

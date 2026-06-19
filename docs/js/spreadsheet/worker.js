@@ -9,12 +9,12 @@ self.onmessage = async (e) => {
 
   try {
     if (type === 'process') {
-      const result = await parseSpreadsheet({
+      const parsed = await parseSpreadsheet({
         type: payload.fileType,
         content: payload.content,
         fileName: payload.fileName
       });
-      const validated = validateDataset(result, payload.columnRules ?? {});
+      const validated = validateDataset(parsed, payload.columnRules ?? {});
       self.postMessage({ result: validated });
       return;
     }

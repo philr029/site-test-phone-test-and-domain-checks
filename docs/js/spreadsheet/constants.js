@@ -21,6 +21,18 @@ export const VALIDATION_TYPES = {
   text: 'text'
 };
 
+export const VALIDATION_TYPE_LABELS = {
+  auto: 'Auto-detect',
+  [VALIDATION_TYPES.email]: 'Email',
+  [VALIDATION_TYPES.domain]: 'Domain',
+  [VALIDATION_TYPES.ip]: 'IP address',
+  [VALIDATION_TYPES.phone]: 'Phone number',
+  [VALIDATION_TYPES.url]: 'URL',
+  [VALIDATION_TYPES.numeric]: 'Numeric',
+  [VALIDATION_TYPES.boolean]: 'Boolean',
+  [VALIDATION_TYPES.text]: 'Text'
+};
+
 export const CHECK_TYPES = {
   domain: 'domain',
   phone: 'phone',

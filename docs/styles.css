@@ -2223,6 +2223,77 @@ body { min-height: 100vh; }
 
 .sheet-results-scroll { max-height: 480px; }
 
+.sheet-results-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.sheet-column-rules {
+  grid-column: 1 / -1;
+}
+
+.sheet-rules-hint {
+  margin: 0 0 0.75rem;
+  font-size: 0.8rem;
+}
+
+.column-rules-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+@media (min-width: 600px) {
+  .column-rules-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (min-width: 960px) {
+  .column-rules-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+.column-rules-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+}
+
+.column-rule-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.column-rule-inferred {
+  font-size: 0.72rem;
+}
+
+.column-rules-grid select {
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  font-family: inherit;
+  font-size: 0.85rem;
+}
+
+.sheet-virtual-body tr:not(.sheet-virtual-spacer) td {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 0;
+}
+
+.sheet-virtual-spacer td {
+  padding: 0 !important;
+  border: none !important;
+  line-height: 0;
+}
+
+.sheet-controls-card .panel-header {
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
 .btn-danger {
   background: var(--danger-soft);
   color: var(--danger);
