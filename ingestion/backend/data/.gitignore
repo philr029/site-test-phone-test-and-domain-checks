@@ -1,0 +1,4 @@
+# Ingestion API data (SQLite)
+*.db
+*.db-wal
+*.db-shm

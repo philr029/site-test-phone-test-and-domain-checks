@@ -49,6 +49,18 @@ On GitHub Pages, the UI runs in **mock / browser DNS mode** when the local API i
 npm run build            # Verify dashboard assets
 ```
 
+## Spreadsheet ingestion API (Phase 1)
+
+Secure batch upload pipeline for the Spreadsheet UI. See [`ingestion/README.md`](ingestion/README.md) for full docs.
+
+```bash
+npm run dev:ingest       # Ingestion API on :3850
+npm run test:ingestion   # Frontend parser/mapper unit tests
+npm run test:ingestion:api
+```
+
+Set `localStorage.setItem('ingest-api-base', 'http://127.0.0.1:3850')` when using the dashboard against a local ingestion server.
+
 ## Directory structure
 
 ```text
@@ -58,7 +70,9 @@ npm run build            # Verify dashboard assets
 │   ├── index.html               # QA testing dashboard (GitHub Pages)
 │   ├── styles.css               # Dashboard styles (light/dark)
 │   ├── js/                      # Modular dashboard app
+│   │   └── ingestion/           # FileUpload, ParserWorker, ColumnMapper
 │   └── samples/                 # Sample CSV for upload tests
+├── ingestion/                   # Express ingestion API + React TS components
 ├── src/api/                     # Local API (secrets in .env only)
 ├── src/lib/                     # Shared check logic for API
 ├── samples/                     # Sample spreadsheet data
