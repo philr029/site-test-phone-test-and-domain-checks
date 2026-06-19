@@ -10,19 +10,28 @@ const required = [
   'docs/index.html',
   'docs/styles.css',
   'docs/js/app.js',
+  'docs/js/spreadsheet/index.js',
+  'docs/js/spreadsheet/parser.js',
+  'docs/js/spreadsheet/validation.js',
+  'docs/js/spreadsheet/batch-processor.js',
+  'docs/js/spreadsheet/worker.js',
   'docs/js/services/domain-client.js',
   'docs/js/pages/spreadsheet.js',
   'src/api/server.js',
-  'samples/domains-sample.csv'
+  'samples/domains-sample.csv',
+  'samples/multi-check-sample.csv'
 ];
 
 for (const rel of required) {
   await fs.access(path.join(root, rel));
 }
 
-const sampleSrc = path.join(root, 'samples/domains-sample.csv');
-const sampleDest = path.join(root, 'docs/samples/domains-sample.csv');
-await fs.mkdir(path.dirname(sampleDest), { recursive: true });
-await fs.copyFile(sampleSrc, sampleDest);
+const samples = ['domains-sample.csv', 'multi-check-sample.csv'];
+for (const name of samples) {
+  const src = path.join(root, 'samples', name);
+  const dest = path.join(root, 'docs/samples', name);
+  await fs.mkdir(path.dirname(dest), { recursive: true });
+  await fs.copyFile(src, dest);
+}
 
 console.log('Dashboard build OK:', required.length, 'files verified');

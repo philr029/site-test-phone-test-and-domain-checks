@@ -152,3 +152,89 @@ Add repository secrets:
 - Deep phone IVR/answer analytics (add Twilio status callback URL).
 - DKIM validation without a known selector (`domain.dkimSelector` planned).
 - Real form submission on production sites unless you explicitly set `safeToSubmit: true`.
+
+## Spreadsheet module
+
+The dashboard **Spreadsheet** tab provides a modular engine for bulk upload, validation, and batch checks against domain, phone, and site test modules.
+
+### Architecture
+
+```text
+docs/js/spreadsheet/
+├── constants.js        # Column aliases, validation types, limits
+├── file-handler.js     # Upload, size limits, worker orchestration
+├── parser.js           # CSV (PapaParse) + XLSX (SheetJS) parsing
+├── validation.js       # Column/row validation + cleaning
+├── batch-processor.js  # Multi-check batch execution + progress
+├── table-ui.js         # Sortable, filterable, paginated table
+├── worker.js           # Web worker for heavy parse/validate
+└── index.js            # Public API
+```
+
+### Example spreadsheet formats
+
+**Domain-only** (`samples/domains-sample.csv`):
+
+```csv
+company,domain,ip,website,notes
+Acme Corp,example.com,93.184.216.34,https://example.com,Sample row
+```
+
+**Multi-check** (`samples/multi-check-sample.csv`):
+
+```csv
+company,domain,ip,website,phone,email,notes
+Acme Corp,example.com,93.184.216.34,https://example.com,+441234567890,ops@acme.com,Full row
+Test UK Ltd,google.com,,https://www.google.com,,,Site + domain
+```
+
+Supported columns are auto-detected from headers (case-insensitive): `domain`, `ip`, `website`/`url`, `phone`, `email`, `company`.
+
+### Validation rules
+
+| Type | Rule |
+|------|------|
+| `email` | Standard `user@domain.tld` format |
+| `domain` | Valid FQDN; strips `https://` prefix |
+| `ip` | IPv4 (octets ≤ 255) or IPv6 |
+| `phone` | 7–15 digits; optional `+` prefix |
+| `url` | Must include `http://` or `https://` (auto-prefixed in cleaned view) |
+| `numeric` | Parseable number |
+| `boolean` | `true/false`, `yes/no`, `1/0` |
+
+Invalid cells are highlighted in the table. Download a **Validation Report** as JSON or CSV from the upload controls.
+
+### Batch processing
+
+1. Upload a `.csv` or `.xlsx` file (up to **50,000 rows**).
+2. Toggle **Raw View** / **Cleaned View** to inspect normalized values.
+3. Select check types: Domain & IP, Phone, Site.
+4. Map spreadsheet columns to each check type.
+5. Click **Run batch checks** — progress bar shows row-by-row status.
+6. Export results CSV or cleaned dataset.
+
+Batch checks call the same clients as the individual test tabs (`runDomainCheck`, `runPhoneTest`, `runSiteCheck`), using the local API when `npm run dev` is running.
+
+### Error handling examples
+
+| Error | Cause | Resolution |
+|-------|-------|------------|
+| `Unsupported file type` | Not `.csv` / `.xlsx` | Re-export from Excel as CSV or XLSX |
+| `File has no header row` | Empty file | Add a header row with column names |
+| `File exceeds 50,000 rows` | Too many rows | Split into smaller files |
+| `XLSX library not loaded` | SheetJS CDN blocked | Check network; reload page |
+| Row flagged `Invalid email format` | Bad email in column | Fix source data or use Cleaned View export |
+| Batch row `warn` with validation issues | Row failed pre-checks | Fix row in source file; invalid rows skip API calls |
+
+### Unit tests
+
+```bash
+npm run test:unit    # Parser, validation, batch processor
+npm test             # Unit tests + Playwright form tests
+```
+
+### Performance
+
+- Files with 500+ rows offload validation to a **Web Worker** to keep the UI responsive.
+- The data table uses **pagination** (25–500 rows per page) and lazy row rendering.
+- Batch processing yields to the main thread between rows for progress updates.

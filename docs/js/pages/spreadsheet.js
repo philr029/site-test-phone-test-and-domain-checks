@@ -1,31 +1,45 @@
 import {
-  parseCsv,
-  parseXlsx,
-  detectColumns,
-  rowsToObjects
-} from '../services/spreadsheet.js';
+  handleFileUpload,
+  buildValidationReport,
+  validationReportToCsv,
+  runBatch,
+  suggestCheckMapping,
+  SpreadsheetTable,
+  CHECK_TYPE_LABELS
+} from '../spreadsheet/index.js';
 import { runDomainCheck } from '../services/domain-client.js';
+import { runSiteCheck } from '../services/site-client.js';
+import { runPhoneTest } from '../services/phone-client.js';
 import { saveHistoryEntry } from '../storage.js';
-import { loadingHtml, emptyStateHtml } from '../components/loading.js';
+import { loadingHtml } from '../components/loading.js';
 import { badgeHtml } from '../components/badges.js';
-import { exportCsv } from '../components/export-buttons.js';
+import { exportCsv, exportJson, downloadBlob } from '../components/export-buttons.js';
 
-let parsedData = null;
-let checkResults = [];
+/** @type {object|null} */
+let sheetState = null;
+/** @type {SpreadsheetTable|null} */
+let dataTable = null;
+/** @type {AbortController|null} */
+let batchAbort = null;
 
 export const renderSpreadsheet = () => `
   <section class="page-header">
     <div>
       <p class="page-eyebrow">Bulk checks</p>
       <h1>Spreadsheet Upload</h1>
-      <p class="page-desc">Upload daily CSV or XLSX with domain, IP, URL, or company columns.</p>
+      <p class="page-desc">Upload CSV or XLSX, validate rows, map columns to domain, phone, and site checks, then run batch automation.</p>
     </div>
   </section>
+
   <div class="upload-zone" id="upload-zone">
     <input type="file" id="sheet-file" accept=".csv,.xlsx,.xls" hidden />
-    <p>Drop .csv or .xlsx here, or <button type="button" class="link-btn" id="pick-file">browse</button></p>
-    <p class="hint"><a href="samples/domains-sample.csv" download>Download sample CSV</a></p>
+    <p>Drop <strong>.csv</strong> or <strong>.xlsx</strong> here, or <button type="button" class="link-btn" id="pick-file">browse</button></p>
+    <p class="hint">Up to 50,000 rows · <a href="samples/domains-sample.csv" download>Download sample CSV</a> · <a href="samples/multi-check-sample.csv" download>Multi-check sample</a></p>
+    <div class="progress-bar hidden" id="upload-progress"><div class="progress-fill" id="upload-progress-fill"></div></div>
   </div>
+
+  <div id="sheet-errors"></div>
+  <div id="sheet-controls" class="hidden"></div>
   <div id="sheet-preview"></div>
   <div id="sheet-results"></div>
 `;
@@ -33,32 +47,48 @@ export const renderSpreadsheet = () => `
 export const bindSpreadsheet = (root) => {
   const zone = root.querySelector('#upload-zone');
   const input = root.querySelector('#sheet-file');
+  const errorsEl = root.querySelector('#sheet-errors');
+  const controlsEl = root.querySelector('#sheet-controls');
   const preview = root.querySelector('#sheet-preview');
   const resultsEl = root.querySelector('#sheet-results');
+  const progressBar = root.querySelector('#upload-progress');
+  const progressFill = root.querySelector('#upload-progress-fill');
 
   root.querySelector('#pick-file')?.addEventListener('click', () => input.click());
 
+  const setProgress = (pct) => {
+    progressBar?.classList.toggle('hidden', pct >= 100);
+    if (progressFill) progressFill.style.width = `${pct}%`;
+  };
+
   const handleFile = async (file) => {
     if (!file) return;
+    errorsEl.innerHTML = '';
+    resultsEl.innerHTML = '';
+    controlsEl.classList.add('hidden');
+    preview.innerHTML = loadingHtml('Parsing and validating…');
+    setProgress(5);
+
     try {
-      let parsed;
-      if (file.name.endsWith('.csv')) {
-        parsed = parseCsv(await file.text());
-      } else if (file.name.match(/\.xlsx?$/i)) {
-        parsed = await parseXlsx(await file.arrayBuffer());
-      } else {
-        throw new Error('Unsupported file type. Use .csv or .xlsx');
-      }
-      const mapping = detectColumns(parsed.headers);
-      parsedData = {
-        fileName: file.name,
-        mapping,
-        rows: rowsToObjects(parsed.headers, parsed.rows, mapping)
+      const columnRules = sheetState?.columnRules ?? {};
+      const data = await handleFileUpload(file, {
+        columnRules,
+        onProgress: setProgress
+      });
+      sheetState = {
+        data,
+        viewMode: 'raw',
+        checkTypes: ['domain'],
+        checkMapping: suggestCheckMapping(data.headers, data.columnMapping),
+        columnRules
       };
-      renderPreview(preview, parsedData);
-      resultsEl.innerHTML = '';
+      setProgress(100);
+      renderControls(controlsEl, root);
+      renderDataTable(preview, sheetState);
     } catch (err) {
-      preview.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+      preview.innerHTML = '';
+      errorsEl.innerHTML = `<div class="alert alert-error"><strong>Upload failed:</strong> ${err.message}</div>`;
+      setProgress(100);
     }
   };
 
@@ -73,122 +103,243 @@ export const bindSpreadsheet = (root) => {
     zone.classList.remove('dragover');
     handleFile(e.dataTransfer.files[0]);
   });
+
+  const rerender = () => {
+    if (!sheetState) return;
+    renderControls(controlsEl, root);
+    renderDataTable(preview, sheetState);
+  };
+
+  root._sheetRerender = rerender;
 };
 
-const renderPreview = (el, data) => {
-  const invalid = data.rows.filter((r) => !r.valid).length;
+const renderControls = (el, root) => {
+  if (!sheetState) return;
+  const { data, viewMode, checkTypes, checkMapping } = sheetState;
+  const invalid = data.summary?.invalid ?? 0;
+
+  el.classList.remove('hidden');
   el.innerHTML = `
-    <article class="panel-card">
+    <article class="panel-card sheet-controls-card">
       <header class="panel-header">
-        <h2>Preview — ${data.fileName}</h2>
-        <span class="muted">${data.rows.length} rows · ${invalid} flagged</span>
+        <h2>${data.fileName}</h2>
+        <span class="muted">${data.summary.total.toLocaleString()} rows · ${invalid} invalid</span>
       </header>
-      <p class="hint">Detected columns: ${Object.keys(data.mapping).join(', ') || 'none — using first columns'}</p>
-      <div class="table-scroll">
-        <table class="data-table">
-          <thead>
-            <tr><th>#</th><th>Company</th><th>Domain</th><th>IP</th><th>URL</th><th>Valid</th></tr>
-          </thead>
-          <tbody>
-            ${data.rows
-              .slice(0, 50)
-              .map(
-                (r) => `<tr class="${r.valid ? '' : 'row-invalid'}">
-              <td>${r.index}</td>
-              <td>${r.company || '—'}</td>
-              <td>${r.domain || '—'}</td>
-              <td>${r.ip || '—'}</td>
-              <td>${r.url || '—'}</td>
-              <td>${r.valid ? badgeHtml('pass') : badgeHtml('warn', r.issues.join('; '))}</td>
-            </tr>`
-              )
-              .join('')}
-          </tbody>
-        </table>
-      </div>
-      <button type="button" class="btn btn-primary" id="run-sheet-checks">Run checks</button>
-    </article>`;
 
-  el.querySelector('#run-sheet-checks')?.addEventListener('click', () => runChecks(el, data));
+      <div class="sheet-control-grid">
+        <fieldset class="sheet-fieldset">
+          <legend>View mode</legend>
+          <div class="toggle-group">
+            <button type="button" class="toggle-btn ${viewMode === 'raw' ? 'active' : ''}" data-view="raw">Raw View</button>
+            <button type="button" class="toggle-btn ${viewMode === 'cleaned' ? 'active' : ''}" data-view="cleaned">Cleaned View</button>
+          </div>
+        </fieldset>
+
+        <fieldset class="sheet-fieldset">
+          <legend>Check types</legend>
+          <div class="check-type-toggles">
+            ${Object.entries(CHECK_TYPE_LABELS).map(([key, label]) => `
+              <label class="check-toggle">
+                <input type="checkbox" data-check-type="${key}" ${checkTypes.includes(key) ? 'checked' : ''} />
+                ${label}
+              </label>
+            `).join('')}
+          </div>
+        </fieldset>
+
+        <fieldset class="sheet-fieldset sheet-mapping">
+          <legend>Column mapping</legend>
+          <div class="mapping-grid">
+            ${['domain', 'phone', 'site'].map((key) => `
+              <label>
+                ${CHECK_TYPE_LABELS[key === 'site' ? 'site' : key] ?? key}
+                <select data-map="${key}">
+                  <option value="">— not mapped —</option>
+                  ${data.headers.map((h, i) => `
+                    <option value="${i}" ${String(checkMapping[key]) === String(i) ? 'selected' : ''}>${h}</option>
+                  `).join('')}
+                </select>
+              </label>
+            `).join('')}
+          </div>
+        </fieldset>
+      </div>
+
+      <div class="sheet-actions">
+        <button type="button" class="btn btn-primary" id="run-sheet-checks">Run batch checks</button>
+        <button type="button" class="btn btn-secondary" id="export-cleaned">Export cleaned CSV</button>
+        <button type="button" class="btn btn-secondary" id="export-validation-json">Validation report (JSON)</button>
+        <button type="button" class="btn btn-secondary" id="export-validation-csv">Validation report (CSV)</button>
+        ${batchAbort ? '<button type="button" class="btn btn-danger btn-sm" id="cancel-batch">Cancel</button>' : ''}
+      </div>
+    </article>
+  `;
+
+  el.querySelectorAll('[data-view]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      sheetState.viewMode = btn.dataset.view;
+      dataTable?.setData({ viewMode: sheetState.viewMode });
+      renderControls(el, root);
+    });
+  });
+
+  el.querySelectorAll('[data-check-type]').forEach((cb) => {
+    cb.addEventListener('change', () => {
+      const types = [...el.querySelectorAll('[data-check-type]:checked')].map((c) => c.dataset.checkType);
+      sheetState.checkTypes = types.length ? types : ['domain'];
+    });
+  });
+
+  el.querySelectorAll('[data-map]').forEach((sel) => {
+    sel.addEventListener('change', () => {
+      sheetState.checkMapping[sel.dataset.map] = sel.value === '' ? '' : Number(sel.value);
+    });
+  });
+
+  el.querySelector('#export-cleaned')?.addEventListener('click', () => exportCleanedData());
+  el.querySelector('#export-validation-json')?.addEventListener('click', () => {
+    const report = buildValidationReport(sheetState.data);
+    exportJson(`validation-report-${Date.now()}.json`, report);
+  });
+  el.querySelector('#export-validation-csv')?.addEventListener('click', () => {
+    const report = buildValidationReport(sheetState.data);
+    downloadBlob(`validation-report-${Date.now()}.csv`, validationReportToCsv(report), 'text/csv');
+  });
+
+  el.querySelector('#run-sheet-checks')?.addEventListener('click', () => runChecks(root));
+  el.querySelector('#cancel-batch')?.addEventListener('click', () => batchAbort?.abort());
 };
 
-const runChecks = async (previewEl, data) => {
-  const resultsEl = previewEl.parentElement.querySelector('#sheet-results');
-  resultsEl.innerHTML = loadingHtml('Running checks on each row…');
-  checkResults = [];
+const renderDataTable = (el, state) => {
+  el.innerHTML = '<div id="sheet-table-host"></div>';
+  const host = el.querySelector('#sheet-table-host');
+  dataTable = new SpreadsheetTable(host, {
+    headers: state.data.headers,
+    rows: state.data.rows,
+    viewMode: state.viewMode,
+    highlightErrors: true,
+    usePagination: true,
+    pageSize: 50
+  });
+};
 
-  for (const row of data.rows) {
-    if (!row.valid) {
-      checkResults.push({ ...row, status: 'warn', detail: row.issues.join('; '), checks: {} });
-      continue;
-    }
-    const target = row.domain || row.ip;
-    if (!target) {
-      checkResults.push({ ...row, status: 'skip', detail: 'No domain/IP', checks: {} });
-      continue;
-    }
-    try {
-      const result = await runDomainCheck(target);
-      const status = result.summary.fail ? 'fail' : result.summary.warn ? 'warn' : 'pass';
-      checkResults.push({ ...row, status, result, summary: result.summary });
-    } catch (err) {
-      checkResults.push({ ...row, status: 'fail', detail: err.message });
-    }
-  }
+const exportCleanedData = () => {
+  if (!sheetState) return;
+  const { headers, rows } = sheetState.data;
+  const cleanedRows = rows.map((r) => ({
+    cells: r.cleaned ?? r.cells,
+    index: r.index
+  }));
+  const columns = [
+    { label: 'row', value: (r) => r.index },
+    ...headers.map((h, i) => ({ label: h, value: (r) => r.cells[i] }))
+  ];
+  exportCsv(`cleaned-${sheetState.data.fileName}-${Date.now()}.csv`, cleanedRows, columns);
+};
 
-  const summary = checkResults.reduce(
-    (acc, r) => {
-      acc[r.status === 'pass' ? 'pass' : r.status === 'fail' ? 'fail' : r.status === 'skip' ? 'skip' : 'warn'] += 1;
-      return acc;
-    },
-    { pass: 0, warn: 0, fail: 0, skip: 0, total: checkResults.length }
-  );
+const runChecks = async (root) => {
+  if (!sheetState) return;
+  const resultsEl = root.querySelector('#sheet-results');
+  const controlsEl = root.querySelector('#sheet-controls');
+  batchAbort = new AbortController();
 
-  saveHistoryEntry({ testType: 'spreadsheet', target: data.fileName, summary });
+  resultsEl.innerHTML = `
+    <article class="panel-card">
+      <header class="panel-header"><h2>Batch processing</h2></header>
+      <div class="progress-bar" id="batch-progress"><div class="progress-fill" id="batch-progress-fill"></div></div>
+      <p class="hint" id="batch-status">Starting…</p>
+    </article>
+  `;
+
+  const fill = resultsEl.querySelector('#batch-progress-fill');
+  const statusEl = resultsEl.querySelector('#batch-status');
+
+  const { results, summary } = await runBatch({
+    rows: sheetState.data.rows,
+    checkTypes: sheetState.checkTypes,
+    checkMapping: sheetState.checkMapping,
+    viewMode: sheetState.viewMode,
+    signal: batchAbort.signal,
+    runners: { runDomainCheck, runSiteCheck, runPhoneTest },
+    onProgress: ({ current, total, percent }) => {
+      if (fill) fill.style.width = `${percent}%`;
+      if (statusEl) statusEl.textContent = `Processing row ${current} of ${total} (${percent}%)`;
+    }
+  });
+
+  batchAbort = null;
+  sheetState.results = results;
+  renderControls(controlsEl, root);
+
+  saveHistoryEntry({
+    testType: 'spreadsheet',
+    target: sheetState.data.fileName,
+    summary: { ...summary, checkTypes: sheetState.checkTypes }
+  });
+
+  const checkCols = sheetState.checkTypes;
 
   resultsEl.innerHTML = `
     <article class="panel-card">
       <header class="panel-header">
-        <h2>Results</h2>
-        <button type="button" class="btn btn-secondary btn-sm" id="export-sheet-csv">Export CSV</button>
+        <h2>Batch results</h2>
+        <button type="button" class="btn btn-secondary btn-sm" id="export-sheet-csv">Export results CSV</button>
       </header>
       <div class="summary-pills">
         ${badgeHtml('pass', `${summary.pass} pass`)}
         ${badgeHtml('warn', `${summary.warn} warn`)}
         ${badgeHtml('fail', `${summary.fail} fail`)}
+        ${badgeHtml('skip', `${summary.skip} skip`)}
       </div>
-      <div class="table-scroll">
+      <div class="table-scroll sheet-results-scroll">
         <table class="data-table">
-          <thead><tr><th>#</th><th>Target</th><th>Company</th><th>Status</th><th>Pass</th><th>Warn</th><th>Fail</th></tr></thead>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Company</th>
+              <th>Domain/IP</th>
+              <th>Phone</th>
+              <th>Site</th>
+              <th>Status</th>
+              ${checkCols.includes('domain') ? '<th>Domain</th>' : ''}
+              ${checkCols.includes('phone') ? '<th>Phone</th>' : ''}
+              ${checkCols.includes('site') ? '<th>Site</th>' : ''}
+            </tr>
+          </thead>
           <tbody>
-            ${checkResults
-              .map(
-                (r) => `<tr>
-              <td>${r.index}</td>
-              <td>${r.domain || r.ip || '—'}</td>
-              <td>${r.company || '—'}</td>
-              <td>${badgeHtml(r.status)}</td>
-              <td>${r.summary?.pass ?? '—'}</td>
-              <td>${r.summary?.warn ?? '—'}</td>
-              <td>${r.summary?.fail ?? '—'}</td>
-            </tr>`
-              )
-              .join('')}
+            ${results.slice(0, 500).map((r) => `
+              <tr class="${r.status === 'fail' ? 'row-invalid' : ''}">
+                <td>${r.index}</td>
+                <td>${r.company || '—'}</td>
+                <td>${r.domain || r.ip || '—'}</td>
+                <td>${r.phone || '—'}</td>
+                <td>${r.site || '—'}</td>
+                <td>${badgeHtml(r.status, r.detail || '')}</td>
+                ${checkCols.includes('domain') ? `<td>${r.checks.domain ? badgeHtml(r.checks.domain.status) : '—'}</td>` : ''}
+                ${checkCols.includes('phone') ? `<td>${r.checks.phone ? badgeHtml(r.checks.phone.status) : '—'}</td>` : ''}
+                ${checkCols.includes('site') ? `<td>${r.checks.site ? badgeHtml(r.checks.site.status) : '—'}</td>` : ''}
+              </tr>
+            `).join('')}
           </tbody>
         </table>
       </div>
-    </article>`;
+      ${results.length > 500 ? `<p class="hint">Showing first 500 of ${results.length.toLocaleString()} results. Export CSV for full data.</p>` : ''}
+    </article>
+  `;
 
   resultsEl.querySelector('#export-sheet-csv')?.addEventListener('click', () => {
-    exportCsv(`spreadsheet-results-${Date.now()}.csv`, checkResults, [
+    exportCsv(`spreadsheet-results-${Date.now()}.csv`, results, [
       { label: 'row', value: (r) => r.index },
       { label: 'company', value: (r) => r.company },
       { label: 'domain', value: (r) => r.domain },
       { label: 'ip', value: (r) => r.ip },
+      { label: 'phone', value: (r) => r.phone },
+      { label: 'site', value: (r) => r.site },
       { label: 'status', value: (r) => r.status },
-      { label: 'pass', value: (r) => r.summary?.pass },
-      { label: 'warn', value: (r) => r.summary?.warn },
-      { label: 'fail', value: (r) => r.summary?.fail }
+      { label: 'domain_check', value: (r) => r.checks.domain?.status },
+      { label: 'phone_check', value: (r) => r.checks.phone?.status },
+      { label: 'site_check', value: (r) => r.checks.site?.status },
+      { label: 'detail', value: (r) => r.detail }
     ]);
   });
 };
