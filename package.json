@@ -5,11 +5,12 @@
   "type": "module",
   "scripts": {
     "test:form-popup": "playwright test tests/form.spec.js",
+    "test:unit": "node --test tests/spreadsheet/*.test.js",
     "test:phone": "node src/phone-test.js",
     "test:twilio": "node src/twilio-verification-test.js",
     "test:domain": "node src/domain-health-check.js",
     "test:e2e": "node src/run-all.js",
-    "test": "npm run test:form-popup",
+    "test": "npm run test:unit && npm run test:form-popup",
     "report": "node src/generate-report.js",
     "clean:reports": "node src/clean-reports.js",
     "build": "node scripts/build-dashboard.js",

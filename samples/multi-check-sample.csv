@@ -1,0 +1,6 @@
+company,domain,ip,website,phone,email,notes
+Acme Corp,example.com,93.184.216.34,https://example.com,+441234567890,ops@acme.com,Full multi-check row
+Test UK Ltd,google.com,,https://www.google.com,,,Site + domain checks
+Phone Only,,,,+442071234567,,Phone test row
+Bad Email,bad-domain,,,not-a-phone,not-an-email,Should flag validation errors
+Internal IP,,8.8.8.8,,,,IP-only domain check
