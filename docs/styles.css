@@ -2230,3 +2230,363 @@ body { min-height: 100vh; }
 }
 
 .btn-danger:hover { opacity: 0.9; }
+
+/* ── Settings page ── */
+.settings-overview {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.settings-overview-card {
+  background: var(--surface-solid);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 1.15rem 1.25rem;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.25s, border-color 0.25s, box-shadow 0.25s;
+}
+
+.settings-overview-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+}
+
+.settings-overview-card.is-online {
+  border-color: rgba(5, 150, 105, 0.35);
+  background: linear-gradient(135deg, var(--success-soft), var(--surface-solid));
+}
+
+.settings-overview-card.is-offline {
+  border-color: rgba(217, 119, 6, 0.35);
+  background: linear-gradient(135deg, var(--warning-soft), var(--surface-solid));
+}
+
+.settings-overview-label {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-tertiary);
+  margin-bottom: 0.35rem;
+}
+
+.settings-overview-value {
+  display: block;
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.settings-overview-meta {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-top: 0.35rem;
+  line-height: 1.4;
+}
+
+.settings-layout {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 1rem;
+  align-items: start;
+}
+
+.settings-main,
+.settings-aside {
+  min-width: 0;
+}
+
+.settings-panel h2 {
+  margin-bottom: 0.75rem;
+}
+
+.settings-section-intro {
+  margin: -0.35rem 0 1rem;
+}
+
+.settings-api-form .settings-input-row {
+  margin-bottom: 0.65rem;
+}
+
+.settings-api-form .settings-input-row input {
+  margin-bottom: 0;
+}
+
+.settings-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.settings-preset.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.settings-form-actions {
+  margin-top: 0.5rem;
+}
+
+.settings-test-result {
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
+  border: 1px solid var(--border);
+}
+
+.settings-test-result.is-ok {
+  background: var(--success-soft);
+  color: var(--success);
+  border-color: rgba(5, 150, 105, 0.25);
+}
+
+.settings-test-result.is-warn {
+  background: var(--warning-soft);
+  color: var(--warning);
+  border-color: rgba(217, 119, 6, 0.25);
+}
+
+.settings-test-result.is-error {
+  background: var(--danger-soft);
+  color: var(--danger);
+  border-color: rgba(220, 38, 38, 0.25);
+}
+
+.settings-test-result.is-loading {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.settings-services-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.settings-service-card {
+  display: flex;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.settings-service-card.is-active {
+  border-color: rgba(5, 150, 105, 0.3);
+  background: var(--surface-solid);
+}
+
+.settings-service-icon {
+  flex-shrink: 0;
+  margin-bottom: 0;
+}
+
+.settings-service-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-service-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.25rem;
+}
+
+.settings-service-head h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.settings-service-body p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.settings-service-body .hint {
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+}
+
+.settings-env-table code {
+  font-size: 0.78rem;
+}
+
+.settings-preferences {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.settings-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  font-size: 0.875rem;
+  color: var(--text);
+  cursor: pointer;
+  user-select: none;
+}
+
+.settings-toggle input {
+  width: 1.1rem;
+  height: 1.1rem;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.settings-save-prefs {
+  align-self: flex-start;
+}
+
+.settings-save-feedback {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--success);
+  font-weight: 600;
+}
+
+.settings-data-stats {
+  margin: 0 0 1rem;
+  padding: 0;
+  list-style: none;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.settings-data-stats li {
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-data-stats li:last-child {
+  border-bottom: none;
+}
+
+.settings-data-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.settings-cli-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.settings-cli-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.65rem 0.75rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.settings-cli-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-cli-label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.2rem;
+}
+
+.settings-cli-cmd {
+  display: block;
+  font-size: 0.78rem;
+  background: none;
+  border: none;
+  padding: 0;
+  word-break: break-all;
+}
+
+.settings-about-list {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.settings-about-list div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  font-size: 0.85rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-about-list div:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.settings-about-list dt {
+  margin: 0;
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+
+.settings-about-list dd {
+  margin: 0;
+  font-weight: 600;
+  text-align: right;
+}
+
+@media (max-width: 1100px) {
+  .settings-overview {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .settings-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .settings-overview {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-service-card {
+    flex-direction: column;
+    gap: 0.65rem;
+  }
+
+  .settings-cli-list li {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .settings-copy-btn {
+    width: 100%;
+  }
+}

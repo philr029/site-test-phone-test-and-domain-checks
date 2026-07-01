@@ -66,3 +66,23 @@ export const saveSettings = (settings) => {
 export const clearHistory = () => {
   localStorage.removeItem(STORAGE_KEYS.history);
 };
+
+export const clearStats = () => {
+  localStorage.removeItem(STORAGE_KEYS.stats);
+};
+
+export const clearAllData = () => {
+  clearHistory();
+  clearStats();
+};
+
+export const getStorageSummary = () => {
+  const history = getHistory();
+  const stats = getStats();
+  const dayCount = Object.keys(stats).length;
+  return {
+    historyCount: history.length,
+    statsDays: dayCount,
+    oldestEntry: history.length ? history[history.length - 1].date : null
+  };
+};
