@@ -14,6 +14,8 @@
     "report": "node src/generate-report.js",
     "clean:reports": "node src/clean-reports.js",
     "build": "node scripts/build-dashboard.js",
+    "check:env": "node scripts/check-env.js",
+    "setup:env": "node -e \"const fs=require('fs'); if(!fs.existsSync('.env')){fs.copyFileSync('.env.example','.env'); console.log('Created .env from .env.example');} else {console.log('.env already exists');}\" && npm run check:env",
     "dev": "node scripts/dev-all.js",
     "dev:api": "node src/api/server.js",
     "dev:dashboard": "node src/api/static-server.js"
