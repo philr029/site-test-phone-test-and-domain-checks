@@ -37,13 +37,18 @@ let apiHealth = null;
 const initTheme = () => {
   const stored = localStorage.getItem(STORAGE_KEYS.theme);
   const theme =
-    stored || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    stored === 'system'
+      ? window.matchMedia('(prefers-color-scheme: dark)').matches
+        ? 'dark'
+        : 'light'
+      : stored || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
   document.documentElement.setAttribute('data-theme', theme);
   const toggle = document.getElementById('theme-toggle');
   if (toggle) {
     toggle.textContent = theme === 'dark' ? '☀️' : '🌙';
     toggle.addEventListener('click', () => {
-      const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      const current = document.documentElement.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
       document.documentElement.setAttribute('data-theme', next);
       localStorage.setItem(STORAGE_KEYS.theme, next);
       toggle.textContent = next === 'dark' ? '☀️' : '🌙';
