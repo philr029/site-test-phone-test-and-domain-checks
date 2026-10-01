@@ -9,7 +9,7 @@ import { renderPhoneTests, bindPhoneTests } from './pages/phone-tests.js';
 import { renderDomainChecks, bindDomainChecks } from './pages/domain-checks.js';
 import { renderSpreadsheet, bindSpreadsheet } from './pages/spreadsheet.js';
 import { renderReports, bindReports } from './pages/reports.js';
-import { renderSettings, bindSettings } from './pages/settings.js';
+import { renderSettings, bindSettings, applyThemeChoice } from './pages/settings.js';
 import { STORAGE_KEYS } from './config.js';
 
 const pageRenderers = {
@@ -34,19 +34,36 @@ const pageBinders = {
 
 let apiHealth = null;
 
+let systemThemeListenerBound = false;
+
 const initTheme = () => {
   const stored = localStorage.getItem(STORAGE_KEYS.theme);
   const theme =
-    stored || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    stored === 'system'
+      ? window.matchMedia('(prefers-color-scheme: dark)').matches
+        ? 'dark'
+        : 'light'
+      : stored || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
   document.documentElement.setAttribute('data-theme', theme);
   const toggle = document.getElementById('theme-toggle');
   if (toggle) {
     toggle.textContent = theme === 'dark' ? '☀️' : '🌙';
-    toggle.addEventListener('click', () => {
-      const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-      document.documentElement.setAttribute('data-theme', next);
-      localStorage.setItem(STORAGE_KEYS.theme, next);
-      toggle.textContent = next === 'dark' ? '☀️' : '🌙';
+    toggle.replaceWith(toggle.cloneNode(true));
+  }
+  const freshToggle = document.getElementById('theme-toggle');
+  freshToggle?.addEventListener('click', () => {
+    const current = document.documentElement.getAttribute('data-theme');
+    const next = current === 'dark' ? 'light' : 'dark';
+    applyThemeChoice(next);
+    freshToggle.textContent = next === 'dark' ? '☀️' : '🌙';
+  });
+
+  if (!systemThemeListenerBound) {
+    systemThemeListenerBound = true;
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+      if (localStorage.getItem(STORAGE_KEYS.theme) === 'system') {
+        applyThemeChoice('system');
+      }
     });
   }
 };

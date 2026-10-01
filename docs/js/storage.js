@@ -66,3 +66,20 @@ export const saveSettings = (settings) => {
 export const clearHistory = () => {
   localStorage.removeItem(STORAGE_KEYS.history);
 };
+
+export const clearStats = () => {
+  localStorage.removeItem(STORAGE_KEYS.stats);
+};
+
+/** Clears history, stats, and saved settings; keeps API base URL and theme. */
+export const clearAllLocalData = () => {
+  const apiBase = localStorage.getItem('qa-api-base');
+  const theme = localStorage.getItem(STORAGE_KEYS.theme);
+  localStorage.removeItem(STORAGE_KEYS.history);
+  localStorage.removeItem(STORAGE_KEYS.stats);
+  localStorage.removeItem(STORAGE_KEYS.settings);
+  if (apiBase != null) localStorage.setItem('qa-api-base', apiBase);
+  if (theme != null) localStorage.setItem(STORAGE_KEYS.theme, theme);
+};
+
+export const exportHistoryJson = () => JSON.stringify(getHistory(), null, 2);
